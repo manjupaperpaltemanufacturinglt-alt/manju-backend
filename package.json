@@ -11,17 +11,17 @@
     "node": "18.x"
   },
   "dependencies": {
-    "express": "^4.22.1",
-    "cors": "^2.8.6",
-    "multer": "^1.4.5-lts.1",
-    "body-parser": "^1.20.4",
     "bcryptjs": "^3.0.3",
-    "jsonwebtoken": "^9.0.3"
+    "body-parser": "^1.20.4",
+    "cloudinary": "^1.41.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.1",
+    "express": "^4.22.1",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^1.4.5-lts.1",
+    "multer-storage-cloudinary": "^4.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+  }
 }
