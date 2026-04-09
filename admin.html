@@ -336,9 +336,9 @@
           <thead><tr>
             <th>Product</th><th>Category</th><th>Stock</th>
             <th>Sold</th><th>Available</th><th>Status</th><th>Update</th>
-          </tr></thead>
+           </thead>
           <tbody id="invBody"></tbody>
-        </table>
+         </table>
       </div>
     </div>
   </div>
@@ -364,9 +364,9 @@
           <thead><tr>
             <th>Order ID</th><th>Customer</th><th>Products</th>
             <th>Total</th><th>Status</th><th>Date</th><th>Action</th>
-          </tr></thead>
+           </thead>
           <tbody id="ordBody"></tbody>
-        </table>
+         </table>
       </div>
     </div>
   </div>
@@ -473,9 +473,9 @@
 
 <script>
 /* ════════════════════════════════════════════════════
-   CONFIG & STATE
+   CONFIG & STATE - UPDATED FOR RENDER DEPLOYMENT
 ════════════════════════════════════════════════════ */
-const SERVER = 'http://localhost:5000';
+const API_URL = "https://manju-backend-1.onrender.com";
 let products = [], relProds = [], orders = [];
 let selFiles = [], relSelFiles = [], selBadge = '';
 
@@ -616,22 +616,22 @@ async function doReset() {
 
 document.getElementById('logoutBtn').onclick = () => { localStorage.removeItem('token'); showAuth(); };
 
-/* ── simple fetch helpers ── */
+/* ── simple fetch helpers (UPDATED to use API_URL) ── */
 async function post(path, body) {
-  const r = await fetch(SERVER + path, { method:'POST', headers: authHdr(), body: JSON.stringify(body) });
+  const r = await fetch(API_URL + path, { method:'POST', headers: authHdr(), body: JSON.stringify(body) });
   return r.json();
 }
 async function del(path) {
-  const r = await fetch(SERVER + path, { method:'DELETE', headers: authHdr() });
+  const r = await fetch(API_URL + path, { method:'DELETE', headers: authHdr() });
   return r.json();
 }
 async function put(path, body) {
-  const r = await fetch(SERVER + path, { method:'PUT', headers: authHdr(), body: JSON.stringify(body) });
+  const r = await fetch(API_URL + path, { method:'PUT', headers: authHdr(), body: JSON.stringify(body) });
   return r.json();
 }
 async function get(path, auth=false) {
   const hdrs = auth ? { 'Authorization': `Bearer ${getToken()}` } : {};
-  const r = await fetch(SERVER + path, { headers: hdrs });
+  const r = await fetch(API_URL + path, { headers: hdrs });
   return r.json();
 }
 
@@ -736,7 +736,7 @@ document.getElementById('upBtn').onclick = async () => {
   selFiles.forEach(f => fd.append('images', f));   // field name = 'images'
 
   try {
-    const r = await fetch(`${SERVER}/upload-product`, { method:'POST', headers: authFDHdr(), body: fd });
+    const r = await fetch(`${API_URL}/upload-product`, { method:'POST', headers: authFDHdr(), body: fd });
     const d = await r.json();
     if (d.success) {
       toast('✅ Product uploaded!');
@@ -850,7 +850,7 @@ document.getElementById('relUpBtn').onclick = async () => {
   relSelFiles.forEach(f => fd.append('images', f));   // field name = 'images'
 
   try {
-    const r = await fetch(`${SERVER}/upload-relevant`, { method:'POST', headers: authFDHdr(), body: fd });
+    const r = await fetch(`${API_URL}/upload-relevant`, { method:'POST', headers: authFDHdr(), body: fd });
     const d = await r.json();
     if (d.success) {
       toast('✅ Relevant product added!');
