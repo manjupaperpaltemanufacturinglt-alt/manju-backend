@@ -10,12 +10,12 @@
  *   • /upload static folder still served correctly in production
  *   • Zero logic removed — all APIs intact
  *   • Added root route "/" serving admin.html
+ *   • REPLACED body-parser with Express built-in middleware
  */
 
 const express    = require('express');
 const multer     = require('multer');
 const cors       = require('cors');
-const bodyParser = require('body-parser');
 const path       = require('path');
 const fs         = require('fs');
 const jwt        = require('jsonwebtoken');
@@ -103,8 +103,9 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));   // handle preflight for every route
 
 /* ─── body parsers ──────────────────────────────────────────── */
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+// REPLACED body-parser with Express built-in middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 /* ─── static: uploaded images ──────────────────────────────── */
 // e.g. GET /upload/prod-1234-5678.jpg
