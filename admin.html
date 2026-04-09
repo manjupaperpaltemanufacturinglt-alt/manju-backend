@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manju Paper Plate - Admin Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --g:#2d7a3a; --gd:#1a4d23; --gl:#e8f5e9; --acc:#f5a623;
+      --red:#e53935; --pur:#7c3aed; --warn:#ff9800;
+      --bg:#f0f2f0; --sb:#0e1810; --card:#fff; --border:#dde8dd;
+      --text:#1a2e1f; --muted:#6b8a6b;
+    }
+    body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); }
+    .hidden { display:none!important; }
+    .layout { display:flex; min-height:100vh; }
+    .sidebar { width:245px; background:var(--sb); position:fixed; height:100vh; overflow-y:auto; z-index:200; }
+    .sb-brand { padding:22px 18px 16px; border-bottom:1px solid rgba(255,255,255,.06); display:flex; align-items:center; gap:11px; }
+    .sb-logo { width:38px; height:38px; background:var(--g); border-radius:10px; display:flex; align-items:center; justify-content:center; font-family:'Syne'; font-weight:800; color:#fff; font-size:1.1rem; }
+    .sb-info h2 { font-family:'Syne'; font-size:.92rem; font-weight:700; color:#f0f8f0; }
+    .sb-info p { font-size:.6rem; color:rgba(255,255,255,.3); }
+    .sb-nav { padding:14px 9px; display:flex; flex-direction:column; gap:3px; }
+    .nav-item { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; cursor:pointer; color:rgba(255,255,255,.45); font-size:.82rem; transition:.15s; }
+    .nav-item:hover { background:rgba(255,255,255,.06); color:rgba(255,255,255,.82); }
+    .nav-item.active { background:var(--g); color:#fff; }
+    .nav-item i { width:18px; }
+    .nb { margin-left:auto; background:var(--acc); color:#fff; font-size:.58rem; padding:2px 6px; border-radius:20px; min-width:20px; text-align:center; }
+    .sb-footer { padding:14px 16px; border-top:1px solid rgba(255,255,255,.05); }
+    .sb-footer a { display:flex; align-items:center; gap:8px; color:rgba(255,255,255,.38); font-size:.74rem; text-decoration:none; padding:5px 0; }
+    .dot-on { width:7px; height:7px; background:#4ade80; border-radius:50%; animation:blink 2s infinite; }
+    @keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
+    .main { margin-left:245px; flex:1; }
+    .topbar { padding:18px 28px; background:var(--bg); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; }
+    .topbar-l h1 { font-family:'Syne'; font-size:1.35rem; font-weight:800; }
+    .topbar-l p { font-size:.76rem; color:var(--muted); }
+    .topbar-r { display:flex; gap:10px; align-items:center; }
+    .tp-pill { background:var(--gl); color:var(--gd); padding:7px 14px; border-radius:30px; font-size:.78rem; font-weight:600; display:flex; align-items:center; gap:5px; }
+    .tp-store { background:var(--pur); color:#fff; padding:8px 14px; border-radius:30px; font-size:.78rem; text-decoration:none; }
+    .logout-btn { background:#f0f2f0; border:1px solid var(--border); padding:6px 14px; border-radius:30px; cursor:pointer; font-size:.8rem; }
+    .logout-btn:hover { background:var(--red); color:#fff; }
+    .sec { padding:24px 28px 60px; }
+    .card { background:var(--card); border-radius:18px; border:1px solid var(--border); overflow:hidden; }
+    .card-hd { padding:18px 22px 0; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+    .card-hd i { color:var(--g); }
+    .up-layout { display:grid; grid-template-columns:1fr 355px; gap:20px; }
+    @media(max-width:1080px){ .up-layout { grid-template-columns:1fr; } }
+    .dz-wrap { margin:0 22px; }
+    .drop-zone { border:2px dashed #b8d8b8; border-radius:14px; min-height:160px; cursor:pointer; background:#fafcfa; display:flex; align-items:center; justify-content:center; transition:.2s; }
+    .drop-zone:hover,.drop-zone.dragover { border-color:var(--g); background:var(--gl); }
+    .dz-content { text-align:center; padding:20px; }
+    .dz-ico { width:52px; height:52px; background:var(--gl); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; font-size:1.3rem; color:var(--g); }
+    .br-btn { background:var(--g); color:#fff; border:none; padding:8px 18px; border-radius:30px; cursor:pointer; }
+    .thumb-strip { display:flex; gap:9px; flex-wrap:wrap; margin:10px 22px; padding:10px; background:#fefef9; border-radius:12px; border:1px solid var(--border); min-height:44px; }
+    .titem { position:relative; width:64px; height:64px; border-radius:10px; overflow:hidden; }
+    .titem img { width:100%; height:100%; object-fit:cover; }
+    .trem { position:absolute; top:-5px; right:-5px; background:var(--red); color:#fff; border-radius:50%; width:18px; height:18px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:10px; }
+    .img-ctr { margin-left:22px; margin-bottom:8px; font-size:.7rem; color:var(--muted); }
+    #imgIn, #relImgIn { display:none; }
+    .form-body { padding:14px 22px 22px; display:flex; flex-direction:column; gap:13px; }
+    .frow { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .fg { display:flex; flex-direction:column; gap:5px; }
+    .fg label { font-size:.7rem; font-weight:600; color:var(--muted); text-transform:uppercase; }
+    .fg input,.fg select,.fg textarea { padding:10px 13px; border:1.5px solid var(--border); border-radius:10px; font-size:.88rem; outline:none; font-family:inherit; }
+    .fg input:focus,.fg select:focus,.fg textarea:focus { border-color:var(--g); }
+    .badge-row { display:flex; gap:7px; flex-wrap:wrap; }
+    .bo { padding:5px 11px; border-radius:20px; border:1.5px solid var(--border); font-size:.7rem; cursor:pointer; background:#fff; transition:.15s; }
+    .bo.s-none  { background:var(--gl); border-color:var(--g); }
+    .bo.s-hot   { background:#ff6b6b; color:#fff; border-color:#ff6b6b; }
+    .bo.s-new   { background:#4ecdc4; color:#fff; border-color:#4ecdc4; }
+    .bo.s-top   { background:#ffd93d; border-color:#ffd93d; }
+    .bo.s-offer { background:#ff9f4a; color:#fff; border-color:#ff9f4a; }
+    .sub-btn { background:linear-gradient(135deg,var(--g),var(--gd)); color:#fff; border:none; padding:13px; border-radius:30px; font-weight:700; cursor:pointer; width:100%; font-size:.9rem; transition:.2s; }
+    .sub-btn:hover { opacity:.9; transform:translateY(-1px); }
+    .sub-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+    .rp { display:flex; flex-direction:column; gap:14px; }
+    .preview-panel { background:var(--card); border-radius:18px; border:1px solid var(--border); padding:18px; }
+    .preview-panel h4 { margin-bottom:12px; font-size:.85rem; }
+    .mini-card { background:#fafcfa; border:1px solid var(--border); border-radius:12px; overflow:hidden; position:relative; }
+    .mini-ibox { height:130px; background:var(--gl); display:flex; align-items:center; justify-content:center; color:var(--g); font-size:2rem; }
+    #miniImg { width:100%; height:130px; object-fit:cover; display:none; }
+    .mini-badge { position:absolute; top:8px; right:8px; padding:3px 8px; border-radius:16px; font-size:.58rem; font-weight:700; display:none; color:#fff; }
+    .mini-body { padding:10px 12px; }
+    .mini-cat  { font-size:.6rem; font-weight:700; color:var(--g); background:var(--gl); padding:2px 7px; border-radius:20px; display:inline-block; margin-bottom:5px; }
+    .mini-name { font-size:.85rem; font-weight:700; margin-bottom:5px; }
+    .mini-prices { display:flex; gap:8px; align-items:center; }
+    .mini-orig  { font-size:.75rem; color:var(--muted); text-decoration:line-through; }
+    .mini-offer { font-size:1rem; font-weight:800; color:var(--g); }
+    .mini-stock-tag { font-size:.65rem; color:var(--muted); margin-top:5px; }
+    .rec-panel { background:var(--card); border-radius:18px; border:1px solid var(--border); }
+    .rec-list  { padding:0 11px 11px; max-height:235px; overflow-y:auto; }
+    .ritem { display:flex; align-items:center; gap:9px; padding:8px; background:#fafcfa; border-radius:9px; margin-bottom:8px; }
+    .ri-th { width:42px; height:42px; border-radius:7px; object-fit:cover; flex-shrink:0; }
+    .pgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:16px; }
+    .pc { background:#fff; border-radius:16px; border:1px solid var(--border); overflow:hidden; transition:.15s; }
+    .pc:hover { box-shadow:0 4px 16px rgba(0,0,0,.08); }
+    .pc-img  { width:100%; height:148px; object-fit:cover; }
+    .pc-body { padding:12px 14px; }
+    .pc-cat  { font-size:.6rem; font-weight:700; color:var(--g); background:var(--gl); padding:2px 7px; border-radius:20px; display:inline-block; margin-bottom:6px; }
+    .pc-name { font-size:.82rem; font-weight:600; margin-bottom:8px; }
+    .pc-foot { display:flex; justify-content:space-between; align-items:center; }
+    .pc-offer{ font-weight:800; color:var(--g); }
+    .pc-del  { background:none; border:1px solid #fcc; color:var(--red); width:30px; height:30px; border-radius:7px; cursor:pointer; transition:.15s; }
+    .pc-del:hover { background:var(--red); color:#fff; }
+    .pt-toolbar { display:flex; gap:11px; margin-bottom:20px; }
+    .psearch { display:flex; align-items:center; gap:7px; background:#fff; border:1.5px solid var(--border); border-radius:30px; padding:8px 14px; flex:1; max-width:300px; }
+    .psearch input { border:none; outline:none; font-size:.85rem; width:100%; }
+    .pfilter { padding:9px 14px; border:1.5px solid var(--border); border-radius:30px; outline:none; font-size:.85rem; }
+    .inv-table { width:100%; border-collapse:collapse; font-size:.82rem; }
+    .inv-table th { padding:10px 14px; text-align:left; font-size:.68rem; color:var(--muted); text-transform:uppercase; border-bottom:1px solid var(--border); }
+    .inv-table td { padding:10px 14px; border-bottom:1px solid #f0f2f0; }
+    .inv-table tr:hover td { background:#f9fdf9; }
+    .inv-img { width:36px; height:36px; border-radius:7px; object-fit:cover; }
+    .low-badge { background:#fff3cd; color:#856404; padding:2px 8px; border-radius:20px; font-size:.6rem; font-weight:700; }
+    .ok-badge  { background:var(--gl); color:var(--gd); padding:2px 8px; border-radius:20px; font-size:.6rem; font-weight:700; }
+    .stock-input { width:80px; padding:5px 8px; border:1.5px solid var(--border); border-radius:7px; font-size:.82rem; }
+    .stock-input:focus { border-color:var(--g); outline:none; }
+    .save-stock-btn { background:var(--g); color:#fff; border:none; padding:5px 10px; border-radius:7px; cursor:pointer; font-size:.72rem; margin-left:4px; }
+    .ord-table { width:100%; border-collapse:collapse; font-size:.82rem; }
+    .ord-table th { padding:10px 14px; text-align:left; font-size:.68rem; color:var(--muted); text-transform:uppercase; border-bottom:1px solid var(--border); }
+    .ord-table td { padding:10px 14px; border-bottom:1px solid #f0f2f0; vertical-align:middle; }
+    .ord-table tr:hover td { background:#f9fdf9; }
+    .status-pill { padding:3px 10px; border-radius:20px; font-size:.65rem; font-weight:700; }
+    .s-Pending   { background:#fff3cd; color:#856404; }
+    .s-Ready     { background:#cce5ff; color:#004085; }
+    .s-Delivered { background:var(--gl); color:var(--gd); }
+    .s-Cancelled { background:#f8d7da; color:#721c24; }
+    .status-sel { padding:5px 8px; border:1.5px solid var(--border); border-radius:7px; font-size:.75rem; outline:none; cursor:pointer; }
+    .status-sel:focus { border-color:var(--g); }
+    .del-btn { background:none; border:1px solid #fcc; color:var(--red); width:28px; height:28px; border-radius:7px; cursor:pointer; font-size:.7rem; }
+    .del-btn:hover { background:var(--red); color:#fff; }
+    .ord-toolbar { display:flex; gap:11px; margin:0 22px 14px; }
+    .ord-filter  { padding:8px 14px; border:1.5px solid var(--border); border-radius:30px; font-size:.82rem; outline:none; }
+    .add-order-btn { background:var(--g); color:#fff; border:none; padding:8px 16px; border-radius:30px; cursor:pointer; font-size:.78rem; display:flex; align-items:center; gap:6px; }
+    .dash-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:18px; }
+    .stat-card  { background:var(--card); border-radius:18px; border:1px solid var(--border); padding:22px 20px; }
+    .stat-icon  { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; margin-bottom:14px; font-size:1.1rem; }
+    .stat-val   { font-family:'Syne'; font-size:2rem; font-weight:800; }
+    .stat-label { font-size:.72rem; color:var(--muted); margin-top:3px; }
+    .add-rel-btn { background:var(--g); color:#fff; border:none; padding:9px 16px; border-radius:30px; cursor:pointer; font-size:.78rem; display:flex; align-items:center; gap:6px; }
+    .modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.5); z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px; }
+    .modal-box { background:#fff; border-radius:20px; width:560px; max-width:100%; max-height:90vh; overflow-y:auto; }
+    .modal-hd { padding:20px 22px 0; display:flex; justify-content:space-between; align-items:center; }
+    .modal-hd h3 { font-family:'Syne'; font-size:1.1rem; font-weight:700; }
+    .modal-close { background:none; border:1px solid var(--border); width:32px; height:32px; border-radius:50%; cursor:pointer; }
+    .toast { position:fixed; bottom:26px; right:26px; background:#0c1a0e; color:#fff; padding:12px 20px; border-radius:30px; opacity:0; transition:all .24s; z-index:9999; display:flex; align-items:center; gap:8px; pointer-events:none; }
+    .toast.show { opacity:1; }
+    .toast.err  { background:var(--red); }
+    .auth-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.75); backdrop-filter:blur(6px); z-index:10000; display:flex; align-items:center; justify-content:center; }
+    .auth-card  { background:#fff; border-radius:32px; width:460px; max-width:92%; padding:32px 28px; }
+    .auth-title { font-size:1.6rem; font-weight:800; font-family:'Syne'; margin-bottom:4px; }
+    .auth-sub   { font-size:.82rem; color:var(--muted); margin-bottom:22px; }
+    .auth-error { background:#fff5f5; color:var(--red); padding:8px 12px; border-radius:10px; font-size:.78rem; margin-bottom:14px; }
+    .auth-input-group { margin-bottom:14px; }
+    .auth-input-group label { display:block; font-size:.7rem; font-weight:600; color:var(--muted); text-transform:uppercase; margin-bottom:5px; }
+    .auth-input-group input { width:100%; padding:12px 14px; border:1.5px solid var(--border); border-radius:16px; font-size:.9rem; outline:none; font-family:inherit; }
+    .auth-input-group input:focus { border-color:var(--g); }
+    .auth-btn  { background:linear-gradient(135deg,var(--g),var(--gd)); color:#fff; padding:12px; border-radius:30px; font-weight:700; width:100%; cursor:pointer; border:none; font-size:.9rem; }
+    .auth-link { text-align:center; margin-top:14px; font-size:.8rem; }
+    .auth-link a { color:var(--g); cursor:pointer; }
+    .pw-toggle { position:relative; }
+    .pw-toggle input { padding-right:40px; }
+    .pw-toggle .toggle-pw { position:absolute; right:14px; top:38px; cursor:pointer; color:var(--muted); }
+    .empty-state { text-align:center; padding:60px 20px; color:var(--muted); }
+    .empty-state i { font-size:2.5rem; margin-bottom:12px; display:block; }
+    .order-prod-row { display:flex; gap:8px; margin-bottom:8px; }
+    .order-prod-row select { flex:1; }
+    .order-prod-row input  { width:80px; }
+    .order-prod-row button { padding:8px 10px; border:1px solid var(--border); border-radius:8px; cursor:pointer; background:#fff; color:var(--red); }
+  </style>
+</head>
+<body>
+
+<!-- Auth screen injected here -->
+<div id="authContainer" style="display:none;"></div>
+
+<div id="adminContainer" style="display:none;">
+<div class="layout">
+
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo">M</div>
+    <div class="sb-info"><h2>Manju Admin</h2><p>Paper Plate MFG. Co.</p></div>
+  </div>
+  <nav class="sb-nav">
+    <div class="nav-item active" data-s="upload"><i class="fas fa-cloud-upload-alt"></i><span>Upload Product</span></div>
+    <div class="nav-item" data-s="products"><i class="fas fa-th-large"></i><span>All Products</span><span class="nb" id="nbProducts">0</span></div>
+    <div class="nav-item" data-s="relevant"><i class="fas fa-star"></i><span>Relevant Products</span><span class="nb" id="nbRelevant">0</span></div>
+    <div class="nav-item" data-s="inventory"><i class="fas fa-boxes"></i><span>Inventory</span><span class="nb" id="nbLow">0</span></div>
+    <div class="nav-item" data-s="orders"><i class="fas fa-shopping-cart"></i><span>Orders</span><span class="nb" id="nbOrders">0</span></div>
+    <div class="nav-item" data-s="dashboard"><i class="fas fa-chart-line"></i><span>Dashboard</span></div>
+  </nav>
+  <div class="sb-footer">
+    <a href="/productpage.html" target="_blank"><i class="fas fa-store"></i> View Product Page</a>
+    <a href="#"><span class="dot-on"></span> Server Connected</a>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-l">
+      <h1 id="pgTitle">Upload Product</h1>
+      <p id="pgSub">Add products — they appear instantly on productpage.html</p>
+    </div>
+    <div class="topbar-r">
+      <div class="tp-pill"><i class="fas fa-box"></i><span id="totalTxt">0 products</span></div>
+      <a class="tp-store" href="/productpage.html" target="_blank"><i class="fas fa-external-link-alt"></i> Store</a>
+      <button class="logout-btn" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+    </div>
+  </div>
+
+  <!-- ===== UPLOAD ===== -->
+  <div class="sec" id="sec-upload">
+    <div class="up-layout">
+      <div class="card">
+        <div class="card-hd"><i class="fas fa-plus-circle"></i><h3>New Product</h3></div>
+        <div class="dz-wrap">
+          <div class="drop-zone" id="dz">
+            <div class="dz-content">
+              <div class="dz-ico"><i class="fas fa-images"></i></div>
+              <p style="font-weight:600;margin-bottom:4px;">Drop images or click Browse</p>
+              <p style="font-size:.72rem;color:var(--muted);margin-bottom:10px;">Up to 5 images · JPG PNG WEBP · max 15 MB each</p>
+              <button class="br-btn" id="brBtn"><i class="fas fa-folder-open"></i> Browse Files</button>
+            </div>
+          </div>
+        </div>
+        <div class="img-ctr" id="imgCtr">0 / 5 images selected</div>
+        <div class="thumb-strip" id="thumbStrip"></div>
+        <input type="file" id="imgIn" accept="image/*" multiple>
+        <div class="form-body">
+          <div class="fg"><label><i class="fas fa-tag"></i> Product Name *</label>
+            <input type="text" id="fName" placeholder="e.g. 9 Inch Premium Paper Plate"></div>
+          <div class="frow">
+            <div class="fg"><label><i class="fas fa-rupee-sign"></i> Original Price (MRP)</label>
+              <input type="number" id="fMRP" placeholder="₹499" min="0"></div>
+            <div class="fg"><label><i class="fas fa-tag"></i> Offer Price *</label>
+              <input type="number" id="fOffer" placeholder="₹299" min="0"></div>
+          </div>
+          <div class="frow">
+            <div class="fg"><label><i class="fas fa-layer-group"></i> Category *</label>
+              <select id="fCat">
+                <option value="">-- Select --</option>
+                <option value="4inch">4 Inch</option><option value="6inch">6 Inch</option>
+                <option value="7inch">7 Inch</option><option value="8inch">8 Inch</option>
+                <option value="9inch">9 Inch</option><option value="10inch">10 Inch</option>
+                <option value="12inch">12 Inch</option><option value="bowl">Bowl</option>
+                <option value="oval">Oval</option><option value="compartment">Compartment</option>
+              </select>
+            </div>
+            <div class="fg"><label><i class="fas fa-ruler"></i> Size Label</label>
+              <input type="text" id="fSize" placeholder="e.g. 9 Inch"></div>
+          </div>
+          <div class="frow">
+            <div class="fg"><label><i class="fas fa-boxes"></i> Initial Stock *</label>
+              <input type="number" id="fStock" placeholder="1000" value="1000" min="0"></div>
+            <div class="fg"><label><i class="fas fa-certificate"></i> Badge</label>
+              <div class="badge-row" id="bdgRow">
+                <span class="bo s-none" data-v="">None</span>
+                <span class="bo" data-v="hot">🔥 HOT</span>
+                <span class="bo" data-v="new">✨ NEW</span>
+                <span class="bo" data-v="top">⭐ TOP</span>
+                <span class="bo" data-v="offer">🎁 OFFER</span>
+              </div>
+            </div>
+          </div>
+          <div class="fg"><label><i class="fas fa-align-left"></i> Description</label>
+            <textarea id="fDesc" rows="2" placeholder="Eco-friendly, biodegradable..."></textarea></div>
+          <button class="sub-btn" id="upBtn"><i class="fas fa-upload"></i> Upload Product</button>
+        </div>
+      </div>
+
+      <div class="rp">
+        <div class="preview-panel">
+          <h4><i class="fas fa-eye"></i> Live Preview</h4>
+          <div class="mini-card">
+            <div class="mini-ibox" id="miniEmpty"><i class="fas fa-image"></i></div>
+            <img id="miniImg">
+            <span class="mini-badge" id="miniBdg"></span>
+            <div class="mini-body">
+              <div class="mini-cat"  id="miniCat">Category</div>
+              <div class="mini-name" id="miniName">Product Name</div>
+              <div class="mini-prices">
+                <span class="mini-orig"  id="miniOrig"></span>
+                <span class="mini-offer" id="miniOff">₹ ---</span>
+              </div>
+              <div class="mini-stock-tag" id="miniStockTag">Stock: 1000</div>
+            </div>
+          </div>
+        </div>
+        <div class="rec-panel">
+          <div class="card-hd"><i class="fas fa-clock"></i><h3>Recently Uploaded</h3></div>
+          <div class="rec-list" id="recList">
+            <div class="empty-state"><i class="fas fa-inbox"></i><p>No products yet</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PRODUCTS ===== -->
+  <div class="sec hidden" id="sec-products">
+    <div class="pt-toolbar">
+      <div class="psearch"><i class="fas fa-search"></i>
+        <input type="text" id="pSrch" placeholder="Search products..."></div>
+      <select id="pFil" class="pfilter">
+        <option value="all">All Categories</option>
+        <option value="4inch">4 Inch</option><option value="6inch">6 Inch</option>
+        <option value="7inch">7 Inch</option><option value="8inch">8 Inch</option>
+        <option value="9inch">9 Inch</option><option value="10inch">10 Inch</option>
+        <option value="12inch">12 Inch</option><option value="bowl">Bowl</option>
+        <option value="oval">Oval</option><option value="compartment">Compartment</option>
+      </select>
+    </div>
+    <div class="pgrid" id="prodGrid"></div>
+  </div>
+
+  <!-- ===== RELEVANT ===== -->
+  <div class="sec hidden" id="sec-relevant">
+    <div class="card">
+      <div class="card-hd"><i class="fas fa-star"></i><h3>Relevant Products</h3>
+        <button class="add-rel-btn" id="addRelBtn" style="margin-left:auto">
+          <i class="fas fa-plus"></i> Add Relevant Product</button>
+      </div>
+      <div class="pgrid" id="relGrid" style="padding:0 22px 22px;"></div>
+    </div>
+  </div>
+
+  <!-- ===== INVENTORY ===== -->
+  <div class="sec hidden" id="sec-inventory">
+    <div class="card">
+      <div class="card-hd"><i class="fas fa-boxes"></i><h3>Inventory</h3></div>
+      <div style="padding:0 22px 22px;overflow-x:auto;">
+        <table class="inv-table">
+          <thead><tr>
+            <th>Product</th><th>Category</th><th>Stock</th>
+            <th>Sold</th><th>Available</th><th>Status</th><th>Update</th>
+          </tr></thead>
+          <tbody id="invBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ORDERS ===== -->
+  <div class="sec hidden" id="sec-orders">
+    <div class="card">
+      <div class="card-hd"><i class="fas fa-shopping-cart"></i><h3>Orders</h3>
+        <button class="add-order-btn" id="addOrderBtn" style="margin-left:auto">
+          <i class="fas fa-plus"></i> New Order</button>
+      </div>
+      <div class="ord-toolbar">
+        <select class="ord-filter" id="ordFilter">
+          <option value="all">All Statuses</option>
+          <option value="Pending">Pending</option>
+          <option value="Ready to Move">Ready to Move</option>
+          <option value="Delivered">Delivered</option>
+          <option value="Cancelled">Cancelled</option>
+        </select>
+      </div>
+      <div style="padding:0 22px 22px;overflow-x:auto;">
+        <table class="ord-table">
+          <thead><tr>
+            <th>Order ID</th><th>Customer</th><th>Products</th>
+            <th>Total</th><th>Status</th><th>Date</th><th>Action</th>
+          </tr></thead>
+          <tbody id="ordBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== DASHBOARD ===== -->
+  <div class="sec hidden" id="sec-dashboard">
+    <div class="dash-grid" id="dashGrid"></div>
+  </div>
+
+</main>
+</div><!-- layout -->
+</div><!-- adminContainer -->
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <i class="fas fa-check-circle"></i><span id="toastMsg">Done!</span>
+</div>
+
+<!-- ===== RELEVANT MODAL ===== -->
+<div class="modal-overlay hidden" id="relModal">
+  <div class="modal-box">
+    <div class="modal-hd">
+      <h3><i class="fas fa-star"></i> Add Relevant Product</h3>
+      <button class="modal-close" id="closeRelModal"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="dz-wrap" style="margin:16px 22px 0;">
+      <div class="drop-zone" id="relDz">
+        <div class="dz-content">
+          <div class="dz-ico"><i class="fas fa-images"></i></div>
+          <p style="font-weight:600;margin-bottom:4px;">Drop images or Browse</p>
+          <p style="font-size:.72rem;color:var(--muted);margin-bottom:10px;">Up to 5 images</p>
+          <button class="br-btn" id="relBrBtn"><i class="fas fa-folder-open"></i> Browse</button>
+        </div>
+      </div>
+    </div>
+    <div class="img-ctr" id="relImgCtr" style="margin-left:22px;margin-top:8px;">0 / 5 images</div>
+    <div class="thumb-strip" id="relThumbStrip" style="margin:8px 22px;"></div>
+    <input type="file" id="relImgIn" accept="image/*" multiple>
+    <div class="form-body">
+      <div class="fg"><label>Product Name *</label>
+        <input type="text" id="rName" placeholder="Product name"></div>
+      <div class="frow">
+        <div class="fg"><label>MRP</label><input type="number" id="rMRP" placeholder="₹499"></div>
+        <div class="fg"><label>Offer Price *</label><input type="number" id="rOffer" placeholder="₹299"></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label>Category</label>
+          <select id="rCat">
+            <option value="">-- Select --</option>
+            <option value="4inch">4 Inch</option><option value="6inch">6 Inch</option>
+            <option value="7inch">7 Inch</option><option value="8inch">8 Inch</option>
+            <option value="9inch">9 Inch</option><option value="10inch">10 Inch</option>
+            <option value="12inch">12 Inch</option><option value="bowl">Bowl</option>
+          </select>
+        </div>
+        <div class="fg"><label>Badge</label>
+          <select id="rBadge">
+            <option value="">None</option>
+            <option value="hot">🔥 HOT</option>
+            <option value="new">✨ NEW</option>
+            <option value="top">⭐ TOP</option>
+            <option value="offer">🎁 OFFER</option>
+          </select>
+        </div>
+      </div>
+      <button class="sub-btn" id="relUpBtn"><i class="fas fa-upload"></i> Add Relevant Product</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ORDER MODAL ===== -->
+<div class="modal-overlay hidden" id="orderModal">
+  <div class="modal-box">
+    <div class="modal-hd">
+      <h3><i class="fas fa-shopping-cart"></i> New Order</h3>
+      <button class="modal-close" id="closeOrderModal"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="form-body">
+      <div class="fg"><label>Customer Name</label>
+        <input type="text" id="ordCustName" placeholder="Customer name"></div>
+      <div class="fg"><label>Phone</label>
+        <input type="text" id="ordCustPhone" placeholder="+91 xxxxx xxxxx"></div>
+      <div class="fg">
+        <label>Products</label>
+        <div id="orderProdsContainer">
+          <div class="order-prod-row">
+            <select class="ord-prod-sel"><option value="">-- Select Product --</option></select>
+            <input type="number" class="ord-qty" placeholder="Qty" min="1" value="1">
+            <button type="button" class="ord-rem-row"><i class="fas fa-times"></i></button>
+          </div>
+        </div>
+        <button type="button" id="addOrderProdRow"
+          style="margin-top:6px;background:var(--gl);color:var(--g);border:none;padding:6px 12px;border-radius:20px;cursor:pointer;font-size:.75rem;">
+          <i class="fas fa-plus"></i> Add product</button>
+      </div>
+      <div class="fg"><label>Total (₹)</label>
+        <input type="number" id="ordTotal" placeholder="0" min="0"></div>
+      <div class="fg"><label>Notes</label>
+        <textarea id="ordNotes" rows="2" placeholder="Any special notes..."></textarea></div>
+      <button class="sub-btn" id="submitOrderBtn"><i class="fas fa-check"></i> Create Order</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════
+   CONFIG & STATE
+════════════════════════════════════════════════════ */
+const SERVER = 'http://localhost:5000';
+let products = [], relProds = [], orders = [];
+let selFiles = [], relSelFiles = [], selBadge = '';
+
+const CAT_LABELS = {
+  '4inch':'4 Inch','6inch':'6 Inch','7inch':'7 Inch','8inch':'8 Inch',
+  '9inch':'9 Inch','10inch':'10 Inch','12inch':'12 Inch',
+  'bowl':'Bowl','oval':'Oval','compartment':'Compartment'
+};
+
+/* ── token helpers ── */
+const getToken   = ()  => localStorage.getItem('token');
+// JSON routes
+const authHdr    = ()  => ({ 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' });
+// Multipart routes — browser sets Content-Type with boundary automatically
+const authFDHdr  = ()  => ({ 'Authorization': `Bearer ${getToken()}` });
+
+/* ════════════════════════════════════════════════════
+   AUTH
+════════════════════════════════════════════════════ */
+function showAdmin() {
+  document.getElementById('adminContainer').style.display = 'block';
+  document.getElementById('authContainer').style.display  = 'none';
+}
+function showAuth() {
+  document.getElementById('adminContainer').style.display = 'none';
+  const ac = document.getElementById('authContainer');
+  ac.style.display = 'flex';
+  ac.innerHTML = `<div class="auth-overlay"><div class="auth-card">
+    <div style="text-align:center;margin-bottom:24px">
+      <span style="background:var(--g);width:52px;height:52px;display:inline-flex;align-items:center;
+        justify-content:center;border-radius:18px;font-size:1.8rem;font-weight:800;color:#fff;font-family:'Syne'">M</span>
+    </div>
+    <div id="authDynamic"></div>
+  </div></div>`;
+  renderLogin();
+}
+
+function renderLogin() {
+  document.getElementById('authDynamic').innerHTML = `
+    <div class="auth-title">Welcome back</div>
+    <div class="auth-sub">Sign in to manage inventory</div>
+    <div id="authErr" class="auth-error" style="display:none"></div>
+    <div class="auth-input-group"><label>Email</label>
+      <input type="email" id="lEmail" placeholder="admin@manju.com"></div>
+    <div class="auth-input-group pw-toggle"><label>Password</label>
+      <input type="password" id="lPwd"><i class="far fa-eye-slash toggle-pw"></i></div>
+    <button class="auth-btn" id="doLogin">Login</button>
+    <div class="auth-link">
+      No account? <a id="goSignup">Create one</a> &nbsp;|&nbsp; <a id="goForgot">Forgot password?</a>
+    </div>`;
+  bindPw();
+  document.getElementById('doLogin').onclick  = doLogin;
+  document.getElementById('goSignup').onclick = renderSignup;
+  document.getElementById('goForgot').onclick = renderForgot;
+}
+
+function renderSignup() {
+  document.getElementById('authDynamic').innerHTML = `
+    <div class="auth-title">Get started</div>
+    <div class="auth-sub">Create your admin account</div>
+    <div id="authErr" class="auth-error" style="display:none"></div>
+    <div class="auth-input-group"><label>Full Name</label><input type="text" id="sName"></div>
+    <div class="auth-input-group"><label>Email</label><input type="email" id="sEmail"></div>
+    <div class="auth-input-group pw-toggle"><label>Password</label>
+      <input type="password" id="sPwd"><i class="far fa-eye-slash toggle-pw"></i></div>
+    <button class="auth-btn" id="doSignup">Sign Up</button>
+    <div class="auth-link"><a id="goLogin">← Back to Login</a></div>`;
+  bindPw();
+  document.getElementById('doSignup').onclick = doSignup;
+  document.getElementById('goLogin').onclick  = renderLogin;
+}
+
+function renderForgot() {
+  document.getElementById('authDynamic').innerHTML = `
+    <div class="auth-title">Reset password</div>
+    <div class="auth-sub">Enter your email & new password</div>
+    <div id="authErr" class="auth-error" style="display:none"></div>
+    <div class="auth-input-group"><label>Email</label><input type="email" id="rEmail"></div>
+    <div class="auth-input-group pw-toggle"><label>New Password</label>
+      <input type="password" id="rPwd"><i class="far fa-eye-slash toggle-pw"></i></div>
+    <button class="auth-btn" id="doReset">Update Password</button>
+    <div class="auth-link"><a id="goLogin">← Back to Login</a></div>`;
+  bindPw();
+  document.getElementById('doReset').onclick = doReset;
+  document.getElementById('goLogin').onclick  = renderLogin;
+}
+
+function bindPw() {
+  document.querySelectorAll('.toggle-pw').forEach(i => {
+    i.onclick = () => {
+      const inp = i.parentElement.querySelector('input');
+      const isHidden = inp.type === 'password';
+      inp.type = isHidden ? 'text' : 'password';
+      i.classList.toggle('fa-eye-slash', !isHidden);
+      i.classList.toggle('fa-eye', isHidden);
+    };
+  });
+}
+
+function authErr(msg) {
+  const el = document.getElementById('authErr');
+  if (el) { el.textContent = msg; el.style.display = 'block'; setTimeout(() => el.style.display='none', 3500); }
+}
+
+async function doLogin() {
+  const email = document.getElementById('lEmail').value.trim();
+  const password = document.getElementById('lPwd').value;
+  if (!email || !password) return authErr('Email and password required');
+  try {
+    const d = await post('/login', { email, password });
+    if (d.success && d.token) { localStorage.setItem('token', d.token); showAdmin(); fetchAll(); }
+    else authErr(d.message || 'Login failed');
+  } catch(e) { authErr('Cannot reach server — run: node server.js'); }
+}
+
+async function doSignup() {
+  const name = document.getElementById('sName').value.trim();
+  const email = document.getElementById('sEmail').value.trim();
+  const password = document.getElementById('sPwd').value;
+  if (!name || !email || !password) return authErr('All fields required');
+  try {
+    const d = await post('/signup', { name, email, password });
+    if (d.success) { toast('Account created! Login now'); renderLogin(); }
+    else authErr(d.message);
+  } catch(e) { authErr('Server error'); }
+}
+
+async function doReset() {
+  const email = document.getElementById('rEmail').value.trim();
+  const newPassword = document.getElementById('rPwd').value;
+  if (!email || !newPassword) return authErr('Both fields required');
+  try {
+    const d = await post('/forgot-password', { email, newPassword });
+    if (d.success) { toast('Password updated!'); renderLogin(); }
+    else authErr(d.message);
+  } catch(e) { authErr('Server error'); }
+}
+
+document.getElementById('logoutBtn').onclick = () => { localStorage.removeItem('token'); showAuth(); };
+
+/* ── simple fetch helpers ── */
+async function post(path, body) {
+  const r = await fetch(SERVER + path, { method:'POST', headers: authHdr(), body: JSON.stringify(body) });
+  return r.json();
+}
+async function del(path) {
+  const r = await fetch(SERVER + path, { method:'DELETE', headers: authHdr() });
+  return r.json();
+}
+async function put(path, body) {
+  const r = await fetch(SERVER + path, { method:'PUT', headers: authHdr(), body: JSON.stringify(body) });
+  return r.json();
+}
+async function get(path, auth=false) {
+  const hdrs = auth ? { 'Authorization': `Bearer ${getToken()}` } : {};
+  const r = await fetch(SERVER + path, { headers: hdrs });
+  return r.json();
+}
+
+/* ════════════════════════════════════════════════════
+   IMAGE DROP ZONE  (shared utility)
+════════════════════════════════════════════════════ */
+function initDz(dzId, btnId, inputId, arr, stripId, ctrId, max, onFirst) {
+  const dz  = document.getElementById(dzId);
+  const btn = document.getElementById(btnId);
+  const inp = document.getElementById(inputId);
+  btn.onclick = () => inp.click();
+  inp.onchange = e => { addFiles(arr, Array.from(e.target.files), stripId, ctrId, max, onFirst); inp.value=''; };
+  dz.ondragover  = e => { e.preventDefault(); dz.classList.add('dragover'); };
+  dz.ondragleave = ()  => dz.classList.remove('dragover');
+  dz.ondrop = e => { e.preventDefault(); dz.classList.remove('dragover'); addFiles(arr, Array.from(e.dataTransfer.files), stripId, ctrId, max, onFirst); };
+}
+
+function addFiles(arr, files, stripId, ctrId, max, onFirst) {
+  const toAdd = files.filter(f => f.type.startsWith('image/')).slice(0, max - arr.length);
+  arr.push(...toAdd);
+  renderThumbs(arr, stripId, ctrId, max);
+  if (onFirst && arr.length) onFirst(arr[0]);
+}
+
+function renderThumbs(arr, stripId, ctrId, max) {
+  const strip = document.getElementById(stripId);
+  strip.innerHTML = '';
+  arr.forEach((f, i) => {
+    const r = new FileReader();
+    r.onload = ev => {
+      const d = document.createElement('div'); d.className = 'titem';
+      d.innerHTML = `<img src="${ev.target.result}"><span class="trem"><i class="fas fa-times"></i></span>`;
+      d.querySelector('.trem').onclick = () => { arr.splice(i,1); renderThumbs(arr,stripId,ctrId,max); };
+      strip.appendChild(d);
+    };
+    r.readAsDataURL(f);
+  });
+  document.getElementById(ctrId).textContent = `${arr.length} / ${max} images selected`;
+}
+
+/* ════════════════════════════════════════════════════
+   UPLOAD PRODUCT
+════════════════════════════════════════════════════ */
+initDz('dz','brBtn','imgIn', selFiles,'thumbStrip','imgCtr',5, f => previewImg(f));
+
+// Badge picker
+document.querySelectorAll('#bdgRow .bo').forEach(opt => {
+  opt.onclick = () => {
+    document.querySelectorAll('#bdgRow .bo').forEach(o => o.className='bo');
+    selBadge = opt.dataset.v;
+    opt.className = 'bo ' + (selBadge ? `s-${selBadge}` : 's-none');
+    const bdg = document.getElementById('miniBdg');
+    if (selBadge) {
+      const bc = {hot:'#ff6b6b',new:'#4ecdc4',top:'#ffd93d',offer:'#ff9f4a'};
+      bdg.style.background = bc[selBadge]; bdg.textContent = selBadge.toUpperCase(); bdg.style.display='block';
+    } else bdg.style.display='none';
+  };
+});
+
+// Live preview
+document.getElementById('fName').oninput  = e => document.getElementById('miniName').textContent = e.target.value || 'Product Name';
+document.getElementById('fOffer').oninput = e => document.getElementById('miniOff').innerHTML = e.target.value ? `₹${e.target.value}` : '₹ ---';
+document.getElementById('fMRP').oninput   = e => document.getElementById('miniOrig').innerHTML = e.target.value ? `₹${e.target.value}` : '';
+document.getElementById('fCat').onchange  = e => document.getElementById('miniCat').textContent = CAT_LABELS[e.target.value] || 'Category';
+document.getElementById('fStock').oninput = e => document.getElementById('miniStockTag').textContent = `Stock: ${e.target.value||0}`;
+
+function previewImg(file) {
+  const r = new FileReader();
+  r.onload = ev => {
+    const img = document.getElementById('miniImg');
+    img.src = ev.target.result; img.style.display='block';
+    document.getElementById('miniEmpty').style.display='none';
+  };
+  r.readAsDataURL(file);
+}
+function clearPreviewImg() {
+  document.getElementById('miniImg').style.display='none';
+  document.getElementById('miniEmpty').style.display='flex';
+}
+
+document.getElementById('upBtn').onclick = async () => {
+  const name  = document.getElementById('fName').value.trim();
+  const offer = document.getElementById('fOffer').value;
+  const cat   = document.getElementById('fCat').value;
+  if (!name)              return toast('Enter product name', true);
+  if (!offer || +offer<=0) return toast('Enter valid offer price', true);
+  if (!cat)               return toast('Select category', true);
+  if (!selFiles.length)   return toast('Select at least 1 image', true);
+
+  const btn = document.getElementById('upBtn');
+  btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Uploading...';
+
+  const fd = new FormData();
+  fd.append('productName',   name);
+  fd.append('offerPrice',    offer);
+  fd.append('originalPrice', document.getElementById('fMRP').value);
+  fd.append('category',      cat);
+  fd.append('size',          document.getElementById('fSize').value);
+  fd.append('description',   document.getElementById('fDesc').value);
+  fd.append('badge',         selBadge);
+  fd.append('stock',         document.getElementById('fStock').value || 1000);
+  selFiles.forEach(f => fd.append('images', f));   // field name = 'images'
+
+  try {
+    const r = await fetch(`${SERVER}/upload-product`, { method:'POST', headers: authFDHdr(), body: fd });
+    const d = await r.json();
+    if (d.success) {
+      toast('✅ Product uploaded!');
+      products.unshift(d.product);
+      updateCounters(); renderRecent(); renderProdGrid();
+      resetUploadForm();
+    } else toast(d.message || 'Upload failed', true);
+  } catch(e) { toast('Server error: ' + e.message, true); }
+  btn.disabled=false; btn.innerHTML='<i class="fas fa-upload"></i> Upload Product';
+};
+
+function resetUploadForm() {
+  selFiles.length = 0; selBadge = '';
+  ['fName','fOffer','fMRP','fSize','fDesc'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('fCat').value='';
+  document.getElementById('fStock').value='1000';
+  renderThumbs(selFiles,'thumbStrip','imgCtr',5);
+  clearPreviewImg();
+  document.querySelectorAll('#bdgRow .bo').forEach(o => o.className='bo');
+  document.querySelector('#bdgRow [data-v=""]').classList.add('s-none');
+  document.getElementById('miniBdg').style.display='none';
+  document.getElementById('miniName').textContent='Product Name';
+  document.getElementById('miniOff').innerHTML='₹ ---';
+  document.getElementById('miniOrig').innerHTML='';
+  document.getElementById('miniCat').textContent='Category';
+  document.getElementById('miniStockTag').textContent='Stock: 1000';
+}
+
+function renderRecent() {
+  const el = document.getElementById('recList');
+  if (!products.length) { el.innerHTML='<div class="empty-state"><i class="fas fa-inbox"></i><p>No products yet</p></div>'; return; }
+  el.innerHTML = products.slice(0,5).map(p => `
+    <div class="ritem">
+      <img class="ri-th" src="${(p.images||[])[0]||''}"
+           onerror="this.src='https://placehold.co/42x42/e8f5e9/2d7a3a?text=IMG'">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</div>
+        <div style="font-size:.62rem;color:var(--muted)">${CAT_LABELS[p.category]||p.category}</div>
+      </div>
+      <div style="font-weight:800;color:var(--g);font-size:.85rem;flex-shrink:0">₹${p.offerPrice}</div>
+    </div>`).join('');
+}
+
+/* ════════════════════════════════════════════════════
+   ALL PRODUCTS
+════════════════════════════════════════════════════ */
+function renderProdGrid() {
+  const term = (document.getElementById('pSrch')?.value||'').toLowerCase();
+  const fil  = document.getElementById('pFil')?.value || 'all';
+  const list = products.filter(p =>
+    p.name.toLowerCase().includes(term) && (fil==='all' || p.category===fil));
+  const g = document.getElementById('prodGrid');
+  if (!list.length) {
+    g.innerHTML='<div class="empty-state" style="grid-column:1/-1"><i class="fas fa-box-open"></i><p>No products found</p></div>'; return;
+  }
+  g.innerHTML = list.map(p => `
+    <div class="pc">
+      <img class="pc-img" src="${(p.images||[])[0]||''}"
+           onerror="this.src='https://placehold.co/210x148/e8f5e9/2d7a3a?text=IMG'">
+      <div class="pc-body">
+        <span class="pc-cat">${CAT_LABELS[p.category]||p.category}</span>
+        <div class="pc-name">${p.name}</div>
+        <div class="pc-foot">
+          <span class="pc-offer">₹${p.offerPrice}</span>
+          <button class="pc-del" onclick="delProduct(${p.id})"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function delProduct(id) {
+  if (!confirm('Delete this product?')) return;
+  const d = await del(`/products/${id}`);
+  if (d.success) { products=products.filter(p=>p.id!==id); updateCounters(); renderRecent(); renderProdGrid(); toast('Product deleted'); }
+  else toast(d.message||'Delete failed', true);
+}
+
+document.getElementById('pSrch').addEventListener('input', renderProdGrid);
+document.getElementById('pFil').addEventListener('change', renderProdGrid);
+
+/* ════════════════════════════════════════════════════
+   RELEVANT PRODUCTS
+   GET  /relevant
+   POST /upload-relevant  (field: 'images', array)
+   DELETE /relevant/:id
+════════════════════════════════════════════════════ */
+initDz('relDz','relBrBtn','relImgIn', relSelFiles,'relThumbStrip','relImgCtr',5, null);
+
+document.getElementById('addRelBtn').onclick   = () => document.getElementById('relModal').classList.remove('hidden');
+document.getElementById('closeRelModal').onclick = () => {
+  document.getElementById('relModal').classList.add('hidden');
+  relSelFiles.length=0; renderThumbs(relSelFiles,'relThumbStrip','relImgCtr',5);
+};
+
+document.getElementById('relUpBtn').onclick = async () => {
+  const name  = document.getElementById('rName').value.trim();
+  const offer = document.getElementById('rOffer').value;
+  if (!name)              return toast('Enter product name', true);
+  if (!offer||+offer<=0)  return toast('Enter valid offer price', true);
+  if (!relSelFiles.length) return toast('Select at least 1 image', true);
+
+  const btn = document.getElementById('relUpBtn');
+  btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Uploading...';
+
+  const fd = new FormData();
+  fd.append('productName',   name);
+  fd.append('offerPrice',    offer);
+  fd.append('originalPrice', document.getElementById('rMRP').value);
+  fd.append('category',      document.getElementById('rCat').value);
+  fd.append('badge',         document.getElementById('rBadge').value);
+  relSelFiles.forEach(f => fd.append('images', f));   // field name = 'images'
+
+  try {
+    const r = await fetch(`${SERVER}/upload-relevant`, { method:'POST', headers: authFDHdr(), body: fd });
+    const d = await r.json();
+    if (d.success) {
+      toast('✅ Relevant product added!');
+      relProds.unshift(d.product); updateCounters(); renderRelGrid();
+      document.getElementById('relModal').classList.add('hidden');
+      relSelFiles.length=0; renderThumbs(relSelFiles,'relThumbStrip','relImgCtr',5);
+      ['rName','rOffer','rMRP'].forEach(id => document.getElementById(id).value='');
+    } else toast(d.message||'Upload failed', true);
+  } catch(e) { toast('Server error: ' + e.message, true); }
+  btn.disabled=false; btn.innerHTML='<i class="fas fa-upload"></i> Add Relevant Product';
+};
+
+function renderRelGrid() {
+  const g = document.getElementById('relGrid');
+  if (!relProds.length) { g.innerHTML='<div class="empty-state"><i class="fas fa-star"></i><p>No relevant products yet</p></div>'; return; }
+  g.innerHTML = relProds.map(p => `
+    <div class="pc">
+      <img class="pc-img" src="${(p.images||[])[0]||''}"
+           onerror="this.src='https://placehold.co/210x148/e8f5e9/2d7a3a?text=IMG'">
+      <div class="pc-body">
+        <span class="pc-cat">${p.category ? (CAT_LABELS[p.category]||p.category) : 'Relevant'}</span>
+        <div class="pc-name">${p.name}</div>
+        <div class="pc-foot">
+          <span class="pc-offer">₹${p.offerPrice}</span>
+          <button class="pc-del" onclick="delRelevant(${p.id})"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function delRelevant(id) {
+  if (!confirm('Delete this relevant product?')) return;
+  const d = await del(`/relevant/${id}`);
+  if (d.success) { relProds=relProds.filter(p=>p.id!==id); updateCounters(); renderRelGrid(); toast('Deleted'); }
+  else toast(d.message||'Delete failed', true);
+}
+
+/* ════════════════════════════════════════════════════
+   INVENTORY
+   GET  /inventory   (no auth needed — server is public)
+   PUT  /inventory/:id  { stock }
+════════════════════════════════════════════════════ */
+async function fetchInventory() {
+  try {
+    const d = await get('/inventory');
+    if (!d.success) return;
+    document.getElementById('nbLow').textContent = d.lowCount;
+    const tbody = document.getElementById('invBody');
+    if (!d.inventory.length) {
+      tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><i class="fas fa-boxes"></i><p>No inventory yet</p></div></td></tr>'; return;
+    }
+    tbody.innerHTML = d.inventory.map(item => `
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:9px">
+            <img class="inv-img" src="${item.image||''}"
+                 onerror="this.src='https://placehold.co/36x36/e8f5e9/2d7a3a?text=IMG'">
+            <span style="font-weight:600">${item.name}</span>
+          </div>
+        </td>
+        <td><span class="pc-cat">${CAT_LABELS[item.category]||item.category}</span></td>
+        <td>${item.stock}</td>
+        <td>${item.sold}</td>
+        <td style="font-weight:700;color:${item.available<10?'var(--red)':'var(--g)'}">${item.available}</td>
+        <td>${item.available<10
+          ? '<span class="low-badge">⚠ Low Stock</span>'
+          : '<span class="ok-badge">✓ OK</span>'}</td>
+        <td>
+          <input type="number" class="stock-input" id="stk_${item.id}" value="${item.stock}" min="0">
+          <button class="save-stock-btn" onclick="updateStock(${item.id})">Save</button>
+        </td>
+      </tr>`).join('');
+  } catch(e) { console.error('Inventory error', e); }
+}
+
+async function updateStock(id) {
+  const val = document.getElementById(`stk_${id}`)?.value;
+  // PUT /inventory/:id  with { stock }
+  const d = await put(`/inventory/${id}`, { stock: parseInt(val)||0 });
+  if (d.success) { toast('Stock updated ✓'); fetchInventory(); }
+  else toast(d.message||'Update failed', true);
+}
+
+/* ════════════════════════════════════════════════════
+   ORDERS
+   GET    /orders
+   POST   /orders
+   POST   /order/status  { id, status }
+   DELETE /orders/:id
+════════════════════════════════════════════════════ */
+async function fetchOrders() {
+  try {
+    const d = await get('/orders', true);
+    if (d.success) { orders = d.orders; updateCounters(); renderOrders(); }
+  } catch(e) { console.error('Orders error', e); }
+}
+
+function renderOrders() {
+  const filter = document.getElementById('ordFilter')?.value || 'all';
+  const list   = filter==='all' ? orders : orders.filter(o => o.status===filter);
+  const tbody  = document.getElementById('ordBody');
+  if (!list.length) {
+    tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><i class="fas fa-shopping-cart"></i><p>No orders found</p></div></td></tr>'; return;
+  }
+  const sClass = { Pending:'s-Pending', 'Ready to Move':'s-Ready', Delivered:'s-Delivered', Cancelled:'s-Cancelled' };
+  tbody.innerHTML = list.map(o => {
+    const prods = (o.products||[]).map(p=>`${p.name} ×${p.qty}`).join(', ') || '—';
+    const date  = new Date(o.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+    return `<tr>
+      <td style="font-size:.72rem;font-family:monospace">${o.id}</td>
+      <td>
+        <div style="font-weight:600">${o.customerName}</div>
+        <div style="font-size:.68rem;color:var(--muted)">${o.customerPhone||''}</div>
+      </td>
+      <td style="font-size:.75rem;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${prods}</td>
+      <td style="font-weight:800;color:var(--g)">₹${o.total}</td>
+      <td>
+        <select class="status-sel" onchange="updateOrderStatus('${o.id}',this.value)">
+          <option value="Pending"        ${o.status==='Pending'?'selected':''}>⏳ Pending</option>
+          <option value="Ready to Move"  ${o.status==='Ready to Move'?'selected':''}>📦 Ready to Move</option>
+          <option value="Delivered"      ${o.status==='Delivered'?'selected':''}>✅ Delivered</option>
+          <option value="Cancelled"      ${o.status==='Cancelled'?'selected':''}>❌ Cancelled</option>
+        </select>
+        <span class="status-pill ${sClass[o.status]||'s-Pending'}" style="margin-left:5px">${o.status}</span>
+      </td>
+      <td style="font-size:.72rem;color:var(--muted)">${date}</td>
+      <td><button class="del-btn" onclick="delOrder('${o.id}')"><i class="fas fa-trash"></i></button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function updateOrderStatus(id, status) {
+  // POST /order/status  { id, status }
+  const d = await post('/order/status', { id, status });
+  if (d.success) {
+    const idx = orders.findIndex(o=>o.id===id);
+    if (idx!==-1) orders[idx].status=status;
+    renderOrders(); toast('Status updated');
+  } else toast(d.message||'Failed', true);
+}
+
+async function delOrder(id) {
+  if (!confirm('Delete this order?')) return;
+  const d = await del(`/orders/${id}`);
+  if (d.success) { orders=orders.filter(o=>o.id!==id); updateCounters(); renderOrders(); toast('Order deleted'); }
+  else toast(d.message||'Delete failed', true);
+}
+
+document.getElementById('ordFilter').onchange = renderOrders;
+
+// New order modal
+document.getElementById('addOrderBtn').onclick    = () => { populateOrderSelects(); document.getElementById('orderModal').classList.remove('hidden'); };
+document.getElementById('closeOrderModal').onclick = () => document.getElementById('orderModal').classList.add('hidden');
+
+function populateOrderSelects() {
+  document.querySelectorAll('.ord-prod-sel').forEach(sel => {
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">-- Select Product --</option>' +
+      products.map(p=>`<option value="${p.id}" data-price="${p.offerPrice}" data-name="${p.name}">${p.name} — ₹${p.offerPrice}</option>`).join('');
+    sel.value = cur;
+  });
+}
+
+document.getElementById('addOrderProdRow').onclick = () => {
+  const row = document.createElement('div');
+  row.className = 'order-prod-row';
+  row.innerHTML = `
+    <select class="ord-prod-sel">
+      <option value="">-- Select Product --</option>
+      ${products.map(p=>`<option value="${p.id}" data-price="${p.offerPrice}" data-name="${p.name}">${p.name} — ₹${p.offerPrice}</option>`).join('')}
+    </select>
+    <input type="number" class="ord-qty" placeholder="Qty" min="1" value="1">
+    <button type="button" class="ord-rem-row"><i class="fas fa-times"></i></button>`;
+  row.querySelector('.ord-rem-row').onclick = () => row.remove();
+  document.getElementById('orderProdsContainer').appendChild(row);
+};
+
+document.getElementById('orderProdsContainer').addEventListener('click', e => {
+  if (e.target.closest('.ord-rem-row')) {
+    const row = e.target.closest('.order-prod-row');
+    if (document.querySelectorAll('.order-prod-row').length > 1) row.remove();
+  }
+});
+
+document.getElementById('submitOrderBtn').onclick = async () => {
+  const custName  = document.getElementById('ordCustName').value.trim() || 'Walk-in Customer';
+  const custPhone = document.getElementById('ordCustPhone').value.trim();
+  const total     = parseFloat(document.getElementById('ordTotal').value) || 0;
+  const notes     = document.getElementById('ordNotes').value;
+  const prods = [];
+  document.querySelectorAll('.order-prod-row').forEach(row => {
+    const sel = row.querySelector('.ord-prod-sel');
+    const qty = row.querySelector('.ord-qty');
+    if (sel.value) {
+      const opt = sel.options[sel.selectedIndex];
+      prods.push({ id:sel.value, name:opt.dataset.name, price:opt.dataset.price, qty:parseInt(qty.value)||1 });
+    }
+  });
+  if (!prods.length) return toast('Add at least one product', true);
+  const d = await post('/orders', { customerName:custName, customerPhone:custPhone, products:prods, total, notes });
+  if (d.success) {
+    orders.unshift(d.order); updateCounters(); renderOrders();
+    document.getElementById('orderModal').classList.add('hidden');
+    ['ordCustName','ordCustPhone','ordTotal','ordNotes'].forEach(id=>document.getElementById(id).value='');
+    toast('Order created!');
+  } else toast(d.message||'Failed', true);
+};
+
+/* ════════════════════════════════════════════════════
+   DASHBOARD
+   GET /analytics/dashboard  → { success, stats: { ... } }
+════════════════════════════════════════════════════ */
+async function fetchDashboard() {
+  try {
+    const d = await get('/analytics/dashboard', true);
+    if (!d.success) return;
+    const s = d.stats;   // ← server wraps everything in .stats
+    const cards = [
+      { icon:'fas fa-box',                color:'#e8f5e9', ic:'#2d7a3a', val:s.totalProducts,   label:'Total Products' },
+      { icon:'fas fa-star',               color:'#f3e8ff', ic:'#7c3aed', val:s.totalRelevant,   label:'Relevant Products' },
+      { icon:'fas fa-shopping-cart',      color:'#fff3cd', ic:'#f5a623', val:s.totalOrders,     label:'Total Orders' },
+      { icon:'fas fa-clock',              color:'#fff3cd', ic:'#ff9800', val:s.pendingOrders,   label:'Pending Orders' },
+      { icon:'fas fa-check-circle',       color:'#e8f5e9', ic:'#2d7a3a', val:s.deliveredOrders, label:'Delivered' },
+      { icon:'fas fa-rupee-sign',         color:'#e8f5e9', ic:'#2d7a3a', val:`₹${(s.totalSales||0).toLocaleString()}`, label:'Total Sales' },
+      { icon:'fas fa-exclamation-triangle',color:'#fff5f5',ic:'#e53935', val:s.lowStockCount,  label:'Low Stock Items' },
+    ];
+    document.getElementById('dashGrid').innerHTML = cards.map(c=>`
+      <div class="stat-card">
+        <div class="stat-icon" style="background:${c.color};color:${c.ic}"><i class="${c.icon}"></i></div>
+        <div class="stat-val">${c.val}</div>
+        <div class="stat-label">${c.label}</div>
+      </div>`).join('');
+  } catch(e) {
+    document.getElementById('dashGrid').innerHTML='<div class="empty-state"><i class="fas fa-chart-line"></i><p>Dashboard unavailable</p></div>';
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   COUNTERS & FETCH ALL
+════════════════════════════════════════════════════ */
+function updateCounters() {
+  document.getElementById('nbProducts').textContent = products.length;
+  document.getElementById('nbRelevant').textContent = relProds.length;
+  document.getElementById('nbOrders').textContent   = orders.length;
+  document.getElementById('totalTxt').textContent   = `${products.length} product${products.length!==1?'s':''}`;
+}
+
+async function fetchAll() {
+  try {
+    const [pr, rr] = await Promise.all([
+      get('/products'),
+      get('/relevant')            // ← correct endpoint (not /relevant-products)
+    ]);
+    if (pr.success) products = pr.products;
+    if (rr.success) relProds = rr.products;
+    updateCounters(); renderRecent(); renderProdGrid(); renderRelGrid();
+  } catch(e) { console.warn('Server not ready:', e.message); }
+
+  try {
+    const or = await get('/orders', true);
+    if (or.success) { orders = or.orders; updateCounters(); renderOrders(); }
+  } catch(e) {}
+}
+
+/* ════════════════════════════════════════════════════
+   NAVIGATION
+════════════════════════════════════════════════════ */
+const NAV_TITLES = { upload:'Upload Product', products:'All Products', relevant:'Relevant Products', inventory:'Inventory', orders:'Orders', dashboard:'Dashboard' };
+const NAV_SUBS   = { upload:'Add products — they appear instantly on productpage.html', products:'Browse and manage all products', relevant:'Manage relevant / featured products', inventory:'Track stock levels', orders:'View and manage orders', dashboard:'Business overview' };
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.onclick = () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+    const s = item.dataset.s;
+    ['upload','products','relevant','inventory','orders','dashboard'].forEach(n =>
+      document.getElementById(`sec-${n}`).classList.toggle('hidden', n!==s));
+    document.getElementById('pgTitle').textContent = NAV_TITLES[s];
+    document.getElementById('pgSub').textContent   = NAV_SUBS[s];
+    if (s==='products')  renderProdGrid();
+    if (s==='upload')    renderRecent();
+    if (s==='relevant')  renderRelGrid();
+    if (s==='inventory') fetchInventory();
+    if (s==='orders')    fetchOrders();
+    if (s==='dashboard') fetchDashboard();
+  };
+});
+
+/* ════════════════════════════════════════════════════
+   TOAST
+════════════════════════════════════════════════════ */
+function toast(msg, err=false) {
+  const t = document.getElementById('toast');
+  t.querySelector('span').textContent = msg;
+  t.className = 'toast show' + (err ? ' err' : '');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+/* ════════════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════════════ */
+if (getToken()) { showAdmin(); fetchAll(); setInterval(fetchAll, 30000); }
+else showAuth();
+</script>
+</body>
+</html>
