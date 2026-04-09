@@ -9,6 +9,7 @@
  *     ALLOWED_ORIGIN env-var (comma-separated list)
  *   • /upload static folder still served correctly in production
  *   • Zero logic removed — all APIs intact
+ *   • Added root route "/" serving admin.html
  */
 
 const express    = require('express');
@@ -118,6 +119,11 @@ if (fs.existsSync(FRONTEND_DIR)) {
   app.use(express.static(__dirname));
 }
 app.use(express.static(__dirname));   // always serve from __dirname as final fallback
+
+/* ─── root route: serve admin panel ──────────────────────────── */
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
 
 /* ─── multer ────────────────────────────────────────────────── */
 const storage = multer.diskStorage({
@@ -578,7 +584,8 @@ app.listen(PORT, () => {
   console.log('\n╔══════════════════════════════════════════════════════╗');
   console.log('║   Manju Paper Plate MFG — Server v4.2 (Production)  ║');
   console.log('╚══════════════════════════════════════════════════════╝');
-  console.log(`\n  🔧 Admin Panel  →  ${BASE_URL}/admin.html`);
+  console.log(`\n  🔧 Admin Panel  →  ${BASE_URL}/`);
+  console.log(`  🔧 Admin Panel  →  ${BASE_URL}/admin.html`);
   console.log(`  🌐 Product Page →  ${BASE_URL}/productpage.html`);
   console.log(`  📊 Dashboard    →  ${BASE_URL}/analytics/dashboard`);
   console.log(`  🩺 Health       →  ${BASE_URL}/api/health`);
