@@ -1,17 +1,21 @@
 /**
- * Manju Paper Plate MFG — Backend Server v5.2 (Production / Render)
+ * Manju Paper Plate MFG — Backend Server v5.3 (Production / Render)
  * 
- * FIXED: Cloudinary "Must supply api_key" error
- * FIXED: multer-storage-cloudinary v4 compatibility
+ * FIXED: Environment variable loading order
+ * FIXED: Cloudinary configuration timing
+ * FIXED: "Must supply api_key" error
  */
 
+// ========== CRITICAL: Load environment variables FIRST ==========
+require('dotenv').config();
+
+// Debug env AFTER loading (moved from top)
 console.log("=== ENV DEBUG START ===");
 console.log("CLOUD NAME:", process.env.CLOUDINARY_CLOUD_NAME);
-console.log("API KEY:", process.env.CLOUDINARY_API_KEY);
-console.log("API SECRET:", process.env.CLOUDINARY_API_SECRET ? "***HIDDEN***" : "MISSING");
+console.log("API KEY:", process.env.CLOUDINARY_API_KEY ? "***PRESENT***" : "MISSING");
+console.log("API SECRET:", process.env.CLOUDINARY_API_SECRET ? "***PRESENT***" : "MISSING");
 console.log("=== ENV DEBUG END ===");
 
-require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
@@ -33,8 +37,19 @@ const PORT = process.env.PORT || 5000;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const SECRET_KEY = process.env.SECRET_KEY || 'manju_super_secret_key_2025';
 
-// ========== CLOUDINARY SETUP (FIXED FOR v4) ==========
-// Configure Cloudinary FIRST
+// ========== CLOUDINARY SETUP (FIXED - WITH VALIDATION) ==========
+// Validate environment variables BEFORE configuring
+if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+  console.error('❌ CRITICAL ERROR: Missing Cloudinary environment variables!');
+  console.error('   CLOUDINARY_CLOUD_NAME:', process.env.CLOUDINARY_CLOUD_NAME ? '✓' : '✗');
+  console.error('   CLOUDINARY_API_KEY:', process.env.CLOUDINARY_API_KEY ? '✓' : '✗');
+  console.error('   CLOUDINARY_API_SECRET:', process.env.CLOUDINARY_API_SECRET ? '✓' : '✗');
+  
+  // Don't exit - allow server to start but with clear error message
+  console.error('⚠️  Cloudinary uploads will FAIL until these are set!');
+}
+
+// Configure Cloudinary AFTER validation
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -44,15 +59,15 @@ cloudinary.config({
 
 // Debug: Verify configuration
 console.log('\n🔍 Cloudinary Config Check:');
-console.log('  cloud_name:', cloudinary.config().cloud_name);
+console.log('  cloud_name:', cloudinary.config().cloud_name || 'MISSING');
 console.log('  api_key exists:', !!cloudinary.config().api_key);
 console.log('  api_secret exists:', !!cloudinary.config().api_secret);
 console.log('  secure:', cloudinary.config().secure);
 
-if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-  console.error('❌ ERROR: Missing Cloudinary environment variables!');
-} else {
+if (cloudinary.config().api_key && cloudinary.config().api_secret) {
   console.log('✅ Cloudinary configured successfully\n');
+} else {
+  console.error('❌ Cloudinary configuration FAILED - check your environment variables on Render\n');
 }
 
 const ALLOWED_ORIGINS_RAW = process.env.ALLOWED_ORIGIN || '';
@@ -137,7 +152,7 @@ app.get('/productpage', (req, res) => {
 });
 
 /* ══════════════════════════════════════════════════════════════
-   📸  CLOUDINARY MULTER STORAGE (FIXED FOR v4)
+   📸  CLOUDINARY MULTER STORAGE (FIXED - WITH ERROR HANDLING)
 ══════════════════════════════════════════════════════════════ */
 
 // Helper: extract the usable URL from a multer-cloudinary file object
@@ -145,67 +160,92 @@ function cloudinaryUrl(file) {
   return file.path || file.secure_url || file.url || null;
 }
 
-// Create storage for main products
-const cloudinaryStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,  // ← CRITICAL: Pass the configured instance
-  params: {
-    folder: 'manju-products',
-    format: async (req, file) => {
-      const ext = path.extname(file.originalname).toLowerCase();
-      return ext.substring(1); // Remove the dot
-    },
-    public_id: (req, file) => {
-      const ts = Date.now();
-      const rand = Math.round(Math.random() * 1e9);
-      const ext = path.extname(file.originalname).toLowerCase();
-      const base = path.basename(file.originalname, ext);
-      const sanitized = base.replace(/[^a-zA-Z0-9]/g, '_');
-      return `prod-${ts}-${rand}-${sanitized}`;
-    },
-    transformation: [{ width: 1200, height: 1200, crop: 'limit', quality: 'auto' }]
-  }
-});
+// FIXED: Check if Cloudinary is properly configured before creating storage
+let cloudinaryStorage;
+let cloudinaryStorageRelevant;
+let upload;
+let uploadRelevant;
 
-// Create storage for relevant products
-const cloudinaryStorageRelevant = new CloudinaryStorage({
-  cloudinary: cloudinary,  // ← CRITICAL: Pass the configured instance
-  params: {
-    folder: 'manju-relevant',
-    format: async (req, file) => {
-      const ext = path.extname(file.originalname).toLowerCase();
-      return ext.substring(1);
+if (cloudinary.config().api_key && cloudinary.config().api_secret) {
+  // Create storage for main products
+  cloudinaryStorage = new CloudinaryStorage({
+    cloudinary: cloudinary,  // ← CRITICAL: Pass the configured instance
+    params: {
+      folder: 'manju-products',
+      format: async (req, file) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        return ext.substring(1); // Remove the dot
+      },
+      public_id: (req, file) => {
+        const ts = Date.now();
+        const rand = Math.round(Math.random() * 1e9);
+        const ext = path.extname(file.originalname).toLowerCase();
+        const base = path.basename(file.originalname, ext);
+        const sanitized = base.replace(/[^a-zA-Z0-9]/g, '_');
+        return `prod-${ts}-${rand}-${sanitized}`;
+      },
+      transformation: [{ width: 1200, height: 1200, crop: 'limit', quality: 'auto' }]
+    }
+  });
+
+  // Create storage for relevant products
+  cloudinaryStorageRelevant = new CloudinaryStorage({
+    cloudinary: cloudinary,  // ← CRITICAL: Pass the configured instance
+    params: {
+      folder: 'manju-relevant',
+      format: async (req, file) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        return ext.substring(1);
+      },
+      public_id: (req, file) => {
+        const ts = Date.now();
+        const rand = Math.round(Math.random() * 1e9);
+        const ext = path.extname(file.originalname).toLowerCase();
+        const base = path.basename(file.originalname, ext);
+        const sanitized = base.replace(/[^a-zA-Z0-9]/g, '_');
+        return `rel-${ts}-${rand}-${sanitized}`;
+      },
+      transformation: [{ width: 1200, height: 1200, crop: 'limit', quality: 'auto' }]
+    }
+  });
+
+  const fileFilter = (_, file, cb) => {
+    if (/\.(jpe?g|png|gif|webp)$/i.test(file.originalname)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Images only — JPG/PNG/GIF/WEBP accepted'));
+    }
+  };
+
+  upload = multer({
+    storage: cloudinaryStorage,
+    limits: { fileSize: 15 * 1024 * 1024 },
+    fileFilter
+  });
+
+  uploadRelevant = multer({
+    storage: cloudinaryStorageRelevant,
+    limits: { fileSize: 15 * 1024 * 1024 },
+    fileFilter
+  });
+  
+  console.log('✅ Multer storage initialized with Cloudinary');
+} else {
+  console.error('❌ Cloudinary not properly configured - multer storage will use disk fallback');
+  // FALLBACK: Use disk storage if Cloudinary is not configured
+  const diskStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, UPLOAD_DIR);
     },
-    public_id: (req, file) => {
-      const ts = Date.now();
-      const rand = Math.round(Math.random() * 1e9);
-      const ext = path.extname(file.originalname).toLowerCase();
-      const base = path.basename(file.originalname, ext);
-      const sanitized = base.replace(/[^a-zA-Z0-9]/g, '_');
-      return `rel-${ts}-${rand}-${sanitized}`;
-    },
-    transformation: [{ width: 1200, height: 1200, crop: 'limit', quality: 'auto' }]
-  }
-});
-
-const fileFilter = (_, file, cb) => {
-  if (/\.(jpe?g|png|gif|webp)$/i.test(file.originalname)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Images only — JPG/PNG/GIF/WEBP accepted'));
-  }
-};
-
-const upload = multer({
-  storage: cloudinaryStorage,
-  limits: { fileSize: 15 * 1024 * 1024 },
-  fileFilter
-});
-
-const uploadRelevant = multer({
-  storage: cloudinaryStorageRelevant,
-  limits: { fileSize: 15 * 1024 * 1024 },
-  fileFilter
-});
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    }
+  });
+  
+  upload = multer({ storage: diskStorage, limits: { fileSize: 15 * 1024 * 1024 } });
+  uploadRelevant = multer({ storage: diskStorage, limits: { fileSize: 15 * 1024 * 1024 } });
+}
 
 /* ─── token helpers ─────────────────────────────────────────── */
 function checkToken(req) {
@@ -227,6 +267,9 @@ function verifyToken(req, res, next) {
 function multerThenAuth(fieldName, maxCount, isRelevant = false) {
   return (req, res, next) => {
     const uploader = isRelevant ? uploadRelevant : upload;
+    if (!uploader) {
+      return res.json({ success: false, message: 'File upload not configured - missing Cloudinary credentials' });
+    }
     uploader.array(fieldName, maxCount)(req, res, (err) => {
       if (err) return res.json({ success: false, message: 'File error: ' + (err.message || String(err)) });
       if (!checkToken(req))
@@ -633,7 +676,7 @@ app.get('/api/health', (_, res) => {
 ══════════════════════════════════════════════════════════════ */
 app.listen(PORT, () => {
   console.log('\n╔════════════════════════════════════════════════════════════╗');
-  console.log('║   Manju Paper Plate MFG — Server v5.2 (Cloudinary FIXED)  ║');
+  console.log('║   Manju Paper Plate MFG — Server v5.3 (Cloudinary FIXED)  ║');
   console.log('╚════════════════════════════════════════════════════════════╝');
   console.log(`\n  🔧 Admin Panel  →  ${BASE_URL}/`);
   console.log(`  🔧 Admin Panel  →  ${BASE_URL}/admin.html`);
