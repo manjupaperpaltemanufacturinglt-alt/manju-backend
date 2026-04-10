@@ -9,6 +9,19 @@
  *   • Added /productpage.html explicit route as safety fallback
  *   • Kept all existing APIs, auth, orders, inventory logic intact
  */
+
+console.log("=== ENV DEBUG START ===");
+console.log("CLOUD NAME:", process.env.CLOUDINARY_CLOUD_NAME);
+console.log("API KEY:", process.env.CLOUDINARY_API_KEY);
+console.log("API SECRET:", process.env.CLOUDINARY_API_SECRET);
+console.log("=== ENV DEBUG END ===");
+
+
+
+
+
+
+
 require('dotenv').config();
 const express = require('express');
 const multer  = require('multer');
