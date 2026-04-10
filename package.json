@@ -38,10 +38,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/manjupaperplate/manju-backend.git"
+    "url": "https://github.com/manjupaperpaltemanufacturinglt-alt/manju-backend"
   },
   "bugs": {
-    "url": "https://github.com/manjupaperplate/manju-backend/issues"
+    "url": "https://github.com/manjupaperpaltemanufacturinglt-alt/manju-backend"
   },
   "homepage": "https://manju-backend-13.onrender.com"
 }
