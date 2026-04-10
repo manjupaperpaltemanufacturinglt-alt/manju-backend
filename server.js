@@ -1,35 +1,24 @@
 /**
- * Manju Paper Plate MFG — Backend Server v5.1 (Production / Render)
- *
- * Fixes from v5.0:
- *   • Fixed "File error: undefined" — Cloudinary URL now extracted from
- *     f.path || f.secure_url || f.url (multer-storage-cloudinary v4 compat)
- *   • Fixed "Cannot GET /productpage.html" — static files served from __dirname
- *     so admin.html and productpage.html sit alongside server.js
- *   • Added /productpage.html explicit route as safety fallback
- *   • Kept all existing APIs, auth, orders, inventory logic intact
+ * Manju Paper Plate MFG — Backend Server v5.2 (Production / Render)
+ * 
+ * FIXED: Cloudinary "Must supply api_key" error
+ * FIXED: multer-storage-cloudinary v4 compatibility
  */
 
 console.log("=== ENV DEBUG START ===");
 console.log("CLOUD NAME:", process.env.CLOUDINARY_CLOUD_NAME);
 console.log("API KEY:", process.env.CLOUDINARY_API_KEY);
-console.log("API SECRET:", process.env.CLOUDINARY_API_SECRET);
+console.log("API SECRET:", process.env.CLOUDINARY_API_SECRET ? "***HIDDEN***" : "MISSING");
 console.log("=== ENV DEBUG END ===");
-
-
-
-
-
-
 
 require('dotenv').config();
 const express = require('express');
-const multer  = require('multer');
-const cors    = require('cors');
-const path    = require('path');
-const fs      = require('fs');
-const jwt     = require('jsonwebtoken');
-const bcrypt  = require('bcryptjs');
+const multer = require('multer');
+const cors = require('cors');
+const path = require('path');
+const fs = require('fs');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
 // Cloudinary
 const cloudinary = require('cloudinary').v2;
@@ -39,30 +28,31 @@ const app = express();
 
 /* ══════════════════════════════════════════════════════════════
    ⚙️  ENVIRONMENT CONFIG
-   Set these in Render → Environment tab:
-     PORT                    (Render sets automatically)
-     BASE_URL                https://your-app-name.onrender.com
-     SECRET_KEY              any long random string
-     ALLOWED_ORIGIN          https://your-site.netlify.app
-     CLOUDINARY_CLOUD_NAME
-     CLOUDINARY_API_KEY
-     CLOUDINARY_API_SECRET
 ══════════════════════════════════════════════════════════════ */
-const PORT       = process.env.PORT || 5000;
-const BASE_URL   = process.env.BASE_URL || `http://localhost:${PORT}`;
+const PORT = process.env.PORT || 5000;
+const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const SECRET_KEY = process.env.SECRET_KEY || 'manju_super_secret_key_2025';
 
-// Cloudinary config
+// ========== CLOUDINARY SETUP (FIXED FOR v4) ==========
+// Configure Cloudinary FIRST
 cloudinary.config({
-  cloud_name : process.env.CLOUDINARY_CLOUD_NAME,
-  api_key    : process.env.CLOUDINARY_API_KEY,
-  api_secret : process.env.CLOUDINARY_API_SECRET
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true
 });
+
+// Debug: Verify configuration
+console.log('\n🔍 Cloudinary Config Check:');
+console.log('  cloud_name:', cloudinary.config().cloud_name);
+console.log('  api_key exists:', !!cloudinary.config().api_key);
+console.log('  api_secret exists:', !!cloudinary.config().api_secret);
+console.log('  secure:', cloudinary.config().secure);
 
 if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
   console.error('❌ ERROR: Missing Cloudinary environment variables!');
 } else {
-  console.log('✅ Cloudinary configured successfully');
+  console.log('✅ Cloudinary configured successfully\n');
 }
 
 const ALLOWED_ORIGINS_RAW = process.env.ALLOWED_ORIGIN || '';
@@ -86,20 +76,22 @@ function loadData() {
     try {
       const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
       return {
-        users          : data.users           || [],
-        products       : data.products        || [],
+        users: data.users || [],
+        products: data.products || [],
         relevantProducts: data.relevantProducts || [],
-        orders         : data.orders          || [],
-        nextProductId  : data.nextProductId   || 1,
-        nextRelId      : data.nextRelId       || 1,
-        nextOrderId    : data.nextOrderId     || 1
+        orders: data.orders || [],
+        nextProductId: data.nextProductId || 1,
+        nextRelId: data.nextRelId || 1,
+        nextOrderId: data.nextOrderId || 1
       };
     } catch (e) {
       console.error('⚠️  data.json corrupt — starting fresh');
     }
   }
-  return { users:[], products:[], relevantProducts:[], orders:[],
-           nextProductId:1, nextRelId:1, nextOrderId:1 };
+  return {
+    users: [], products: [], relevantProducts: [], orders: [],
+    nextProductId: 1, nextRelId: 1, nextOrderId: 1
+  };
 }
 function saveData() {
   fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2), 'utf8');
@@ -116,8 +108,8 @@ const corsOptions = {
     if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
     callback(new Error(`CORS: origin '${origin}' not allowed`));
   },
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 };
 app.use(cors(corsOptions));
@@ -130,11 +122,7 @@ app.use(express.urlencoded({ extended: true }));
 /* ─── static: legacy uploaded images ───────────────────────── */
 app.use('/upload', express.static(UPLOAD_DIR));
 
-/* ─── static: serve HTML files from __dirname ──────────────────
-   FIX: productpage.html and admin.html must live in the SAME
-   folder as server.js (the backend root). Render deploys
-   everything in that folder, so this single line serves both.
-──────────────────────────────────────────────────────────────── */
+/* ─── static: serve HTML files from __dirname ────────────────── */
 app.use(express.static(__dirname));
 
 /* ─── explicit HTML routes (safety fallback) ────────────────── */
@@ -149,64 +137,73 @@ app.get('/productpage', (req, res) => {
 });
 
 /* ══════════════════════════════════════════════════════════════
-   📸  CLOUDINARY MULTER STORAGE
+   📸  CLOUDINARY MULTER STORAGE (FIXED FOR v4)
 ══════════════════════════════════════════════════════════════ */
 
-// ── Helper: extract the usable URL from a multer-cloudinary file object ──
-// multer-storage-cloudinary v4 puts the URL in `file.path`
-// but older builds / edge cases may use `file.secure_url` or `file.url`
+// Helper: extract the usable URL from a multer-cloudinary file object
 function cloudinaryUrl(file) {
   return file.path || file.secure_url || file.url || null;
 }
 
+// Create storage for main products
 const cloudinaryStorage = new CloudinaryStorage({
-  cloudinary,
+  cloudinary: cloudinary,  // ← CRITICAL: Pass the configured instance
   params: {
-    folder          : 'manju-products',
-    allowed_formats : ['jpg','jpeg','png','gif','webp'],
-    transformation  : [{ width:1200, height:1200, crop:'limit', quality:'auto' }],
-    public_id       : (req, file) => {
-      const ts       = Date.now();
-      const rand     = Math.round(Math.random() * 1e9);
-      const ext      = path.extname(file.originalname).toLowerCase();
-      const base     = path.basename(file.originalname, ext);
+    folder: 'manju-products',
+    format: async (req, file) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      return ext.substring(1); // Remove the dot
+    },
+    public_id: (req, file) => {
+      const ts = Date.now();
+      const rand = Math.round(Math.random() * 1e9);
+      const ext = path.extname(file.originalname).toLowerCase();
+      const base = path.basename(file.originalname, ext);
       const sanitized = base.replace(/[^a-zA-Z0-9]/g, '_');
       return `prod-${ts}-${rand}-${sanitized}`;
-    }
+    },
+    transformation: [{ width: 1200, height: 1200, crop: 'limit', quality: 'auto' }]
   }
 });
 
+// Create storage for relevant products
 const cloudinaryStorageRelevant = new CloudinaryStorage({
-  cloudinary,
+  cloudinary: cloudinary,  // ← CRITICAL: Pass the configured instance
   params: {
-    folder          : 'manju-relevant',
-    allowed_formats : ['jpg','jpeg','png','gif','webp'],
-    transformation  : [{ width:1200, height:1200, crop:'limit', quality:'auto' }],
-    public_id       : (req, file) => {
-      const ts        = Date.now();
-      const rand      = Math.round(Math.random() * 1e9);
-      const ext       = path.extname(file.originalname).toLowerCase();
-      const base      = path.basename(file.originalname, ext);
+    folder: 'manju-relevant',
+    format: async (req, file) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      return ext.substring(1);
+    },
+    public_id: (req, file) => {
+      const ts = Date.now();
+      const rand = Math.round(Math.random() * 1e9);
+      const ext = path.extname(file.originalname).toLowerCase();
+      const base = path.basename(file.originalname, ext);
       const sanitized = base.replace(/[^a-zA-Z0-9]/g, '_');
       return `rel-${ts}-${rand}-${sanitized}`;
-    }
+    },
+    transformation: [{ width: 1200, height: 1200, crop: 'limit', quality: 'auto' }]
   }
 });
 
-const fileFilter = (_, file, cb) =>
-  /\.(jpe?g|png|gif|webp)$/i.test(file.originalname)
-    ? cb(null, true)
-    : cb(new Error('Images only — JPG/PNG/GIF/WEBP accepted'));
+const fileFilter = (_, file, cb) => {
+  if (/\.(jpe?g|png|gif|webp)$/i.test(file.originalname)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Images only — JPG/PNG/GIF/WEBP accepted'));
+  }
+};
 
 const upload = multer({
-  storage   : cloudinaryStorage,
-  limits    : { fileSize: 15 * 1024 * 1024 },
+  storage: cloudinaryStorage,
+  limits: { fileSize: 15 * 1024 * 1024 },
   fileFilter
 });
 
 const uploadRelevant = multer({
-  storage   : cloudinaryStorageRelevant,
-  limits    : { fileSize: 15 * 1024 * 1024 },
+  storage: cloudinaryStorageRelevant,
+  limits: { fileSize: 15 * 1024 * 1024 },
   fileFilter
 });
 
@@ -214,8 +211,11 @@ const uploadRelevant = multer({
 function checkToken(req) {
   const auth = (req.headers.authorization || '');
   if (!auth.startsWith('Bearer ')) return null;
-  try { return jwt.verify(auth.slice(7), SECRET_KEY); }
-  catch (_) { return null; }
+  try {
+    return jwt.verify(auth.slice(7), SECRET_KEY);
+  } catch (_) {
+    return null;
+  }
 }
 function verifyToken(req, res, next) {
   if (!checkToken(req))
@@ -236,13 +236,6 @@ function multerThenAuth(fieldName, maxCount, isRelevant = false) {
   };
 }
 
-/* ─── image URL helper ──────────────────────────────────────── */
-function imgUrl(filename) {
-  if (filename && (filename.startsWith('http://') || filename.startsWith('https://')))
-    return filename;
-  return `${BASE_URL}/upload/${filename}`;
-}
-
 /* ══════════════════════════════════════════════════════════════
    🔐  AUTH
 ══════════════════════════════════════════════════════════════ */
@@ -253,12 +246,18 @@ app.post('/signup', async (req, res) => {
   if (db.users.find(u => u.email === email))
     return res.json({ success: false, message: 'Email already exists' });
   try {
-    db.users.push({ id: Date.now(), name, email,
+    db.users.push({
+      id: Date.now(),
+      name,
+      email,
       password: await bcrypt.hash(password, 10),
-      createdAt: new Date().toISOString() });
+      createdAt: new Date().toISOString()
+    });
     saveData();
     res.json({ success: true, message: 'Account created' });
-  } catch (e) { res.json({ success: false, message: 'Server error' }); }
+  } catch (e) {
+    res.json({ success: false, message: 'Server error' });
+  }
 });
 
 app.post('/login', async (req, res) => {
@@ -272,9 +271,17 @@ app.post('/login', async (req, res) => {
       return res.json({ success: false, message: 'Invalid password' });
     const token = jwt.sign(
       { userId: user.id, email: user.email, name: user.name },
-      SECRET_KEY, { expiresIn: '7d' });
-    res.json({ success: true, token, user: { id: user.id, name: user.name, email: user.email } });
-  } catch (e) { res.json({ success: false, message: 'Server error' }); }
+      SECRET_KEY,
+      { expiresIn: '7d' }
+    );
+    res.json({
+      success: true,
+      token,
+      user: { id: user.id, name: user.name, email: user.email }
+    });
+  } catch (e) {
+    res.json({ success: false, message: 'Server error' });
+  }
 });
 
 app.post('/forgot-password', async (req, res) => {
@@ -287,7 +294,9 @@ app.post('/forgot-password', async (req, res) => {
     user.password = await bcrypt.hash(newPassword, 10);
     saveData();
     res.json({ success: true, message: 'Password updated' });
-  } catch (e) { res.json({ success: false, message: 'Server error' }); }
+  } catch (e) {
+    res.json({ success: false, message: 'Server error' });
+  }
 });
 
 /* ══════════════════════════════════════════════════════════════
@@ -311,7 +320,7 @@ app.post('/upload-product', multerThenAuth('images', 5, false), (req, res) => {
     if (!(req.files || []).length)
       return res.json({ success: false, message: 'At least one image required' });
 
-    // ✅ FIX: use cloudinaryUrl() helper — handles all multer-cloudinary versions
+    // Get Cloudinary URLs
     const imageUrls = req.files.map(f => cloudinaryUrl(f)).filter(Boolean);
 
     if (!imageUrls.length)
@@ -319,21 +328,21 @@ app.post('/upload-product', multerThenAuth('images', 5, false), (req, res) => {
 
     const stockQty = parseInt(stock) || 0;
     const product = {
-      id            : db.nextProductId++,
-      name          : productName.trim(),
-      originalPrice : originalPrice?.trim() ? +originalPrice : null,
-      offerPrice    : +offerPrice,
-      size          : size?.trim() || category,
+      id: db.nextProductId++,
+      name: productName.trim(),
+      originalPrice: originalPrice?.trim() ? +originalPrice : null,
+      offerPrice: +offerPrice,
+      size: size?.trim() || category,
       category,
-      badge         : badge || '',
-      description   : description?.trim() || '',
-      images        : imageUrls,
-      image         : imageUrls[0],
-      stock         : stockQty,
-      sold          : 0,
-      available     : stockQty,
-      createdAt     : new Date().toISOString(),
-      updatedAt     : new Date().toISOString()
+      badge: badge || '',
+      description: description?.trim() || '',
+      images: imageUrls,
+      image: imageUrls[0],
+      stock: stockQty,
+      sold: 0,
+      available: stockQty,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
     db.products.unshift(product);
@@ -347,24 +356,26 @@ app.post('/upload-product', multerThenAuth('images', 5, false), (req, res) => {
 });
 
 app.delete('/products/:id', verifyToken, (req, res) => {
-  const id  = parseInt(req.params.id);
+  const id = parseInt(req.params.id);
   const idx = db.products.findIndex(p => p.id === id);
   if (idx === -1) return res.json({ success: false, message: 'Not found' });
 
-  const product   = db.products[idx];
+  const product = db.products[idx];
   const imageUrls = product.images || [];
 
+  // Delete images from Cloudinary
   for (const url of imageUrls) {
     try {
-      const urlParts    = url.split('/');
+      const urlParts = url.split('/');
       const uploadIndex = urlParts.indexOf('upload');
       if (uploadIndex !== -1 && uploadIndex + 1 < urlParts.length) {
         let startIdx = uploadIndex + 1;
         if (urlParts[startIdx]?.startsWith('v')) startIdx++;
         const publicIdWithExt = urlParts.slice(startIdx).join('/');
-        const publicId        = publicIdWithExt.substring(0, publicIdWithExt.lastIndexOf('.'));
+        const publicId = publicIdWithExt.substring(0, publicIdWithExt.lastIndexOf('.'));
         if (publicId) cloudinary.uploader.destroy(publicId).catch(err =>
-          console.warn(`Could not delete Cloudinary image: ${publicId}`, err.message));
+          console.warn(`Could not delete Cloudinary image: ${publicId}`, err.message)
+        );
       }
     } catch (err) {
       console.warn(`Error deleting Cloudinary image for product ${id}:`, err.message);
@@ -399,23 +410,22 @@ app.post('/upload-relevant', multerThenAuth('images', 5, true), (req, res) => {
     if (!(req.files || []).length)
       return res.json({ success: false, message: 'At least one image required' });
 
-    // ✅ FIX: use cloudinaryUrl() helper
     const imageUrls = req.files.map(f => cloudinaryUrl(f)).filter(Boolean);
 
     if (!imageUrls.length)
       return res.json({ success: false, message: 'Image upload to Cloudinary failed — no URL returned' });
 
     const product = {
-      id            : db.nextRelId++,
-      name          : productName.trim(),
-      offerPrice    : +offerPrice,
-      originalPrice : originalPrice?.trim() ? +originalPrice : null,
-      category      : category || '',
-      badge         : badge || '',
-      images        : imageUrls,
-      image         : imageUrls[0],
-      isRelevant    : true,
-      createdAt     : new Date().toISOString()
+      id: db.nextRelId++,
+      name: productName.trim(),
+      offerPrice: +offerPrice,
+      originalPrice: originalPrice?.trim() ? +originalPrice : null,
+      category: category || '',
+      badge: badge || '',
+      images: imageUrls,
+      image: imageUrls[0],
+      isRelevant: true,
+      createdAt: new Date().toISOString()
     };
 
     db.relevantProducts.unshift(product);
@@ -429,23 +439,25 @@ app.post('/upload-relevant', multerThenAuth('images', 5, true), (req, res) => {
 });
 
 app.delete('/relevant/:id', verifyToken, (req, res) => {
-  const id  = parseInt(req.params.id);
+  const id = parseInt(req.params.id);
   const idx = db.relevantProducts.findIndex(p => p.id === id);
   if (idx === -1) return res.json({ success: false, message: 'Not found' });
 
-  const product   = db.relevantProducts[idx];
+  const product = db.relevantProducts[idx];
   const imageUrls = product.images || [];
+  
   for (const url of imageUrls) {
     try {
-      const urlParts    = url.split('/');
+      const urlParts = url.split('/');
       const uploadIndex = urlParts.indexOf('upload');
       if (uploadIndex !== -1 && uploadIndex + 1 < urlParts.length) {
         let startIdx = uploadIndex + 1;
         if (urlParts[startIdx]?.startsWith('v')) startIdx++;
         const publicIdWithExt = urlParts.slice(startIdx).join('/');
-        const publicId        = publicIdWithExt.substring(0, publicIdWithExt.lastIndexOf('.'));
+        const publicId = publicIdWithExt.substring(0, publicIdWithExt.lastIndexOf('.'));
         if (publicId) cloudinary.uploader.destroy(publicId).catch(err =>
-          console.warn(`Could not delete Cloudinary image: ${publicId}`, err.message));
+          console.warn(`Could not delete Cloudinary image: ${publicId}`, err.message)
+        );
       }
     } catch (err) {
       console.warn(`Error deleting Cloudinary image for relevant product ${id}:`, err.message);
@@ -462,8 +474,8 @@ app.delete('/relevant/:id', verifyToken, (req, res) => {
 ══════════════════════════════════════════════════════════════ */
 app.get('/recommendations/:id', (req, res) => {
   const id = parseInt(req.params.id);
-  const source = db.products.find(p => p.id === id)
-              || db.relevantProducts.find(p => p.id === id);
+  const source = db.products.find(p => p.id === id) ||
+    db.relevantProducts.find(p => p.id === id);
   const sameCat = source
     ? db.products.filter(p => p.id !== id && p.category === source.category).slice(0, 4)
     : db.products.slice(0, 4);
@@ -484,14 +496,14 @@ app.get('/recommendations/:id', (req, res) => {
 ══════════════════════════════════════════════════════════════ */
 app.get('/inventory', (_, res) => {
   const inventory = db.products.map(p => ({
-    id        : p.id,
-    name      : p.name,
-    category  : p.category,
-    image     : (p.images || [])[0] || '',
-    stock     : p.stock    || 0,
-    sold      : p.sold     || 0,
-    available : (p.stock   || 0) - (p.sold || 0),
-    updatedAt : p.updatedAt
+    id: p.id,
+    name: p.name,
+    category: p.category,
+    image: (p.images || [])[0] || '',
+    stock: p.stock || 0,
+    sold: p.sold || 0,
+    available: (p.stock || 0) - (p.sold || 0),
+    updatedAt: p.updatedAt
   }));
   const lowCount = inventory.filter(i => i.available < 10).length;
   res.json({ success: true, inventory, lowCount });
@@ -499,9 +511,9 @@ app.get('/inventory', (_, res) => {
 
 app.put('/inventory/:id', verifyToken, (req, res) => {
   const id = parseInt(req.params.id);
-  const p  = db.products.find(x => x.id === id);
+  const p = db.products.find(x => x.id === id);
   if (!p) return res.json({ success: false, message: 'Product not found' });
-  p.stock     = parseInt(req.body.stock) || 0;
+  p.stock = parseInt(req.body.stock) || 0;
   p.available = p.stock - (p.sold || 0);
   p.updatedAt = new Date().toISOString();
   saveData();
@@ -518,14 +530,14 @@ app.get('/orders', verifyToken, (_, res) => {
 app.post('/orders', verifyToken, (req, res) => {
   const { customerName, customerPhone, products: prods, total, notes } = req.body;
   const order = {
-    id            : 'ORD-' + Date.now(),
-    customerName  : customerName  || 'Walk-in',
-    customerPhone : customerPhone || '',
-    products      : prods || [],
-    total         : parseFloat(total) || 0,
-    notes         : notes || '',
-    status        : 'Pending',
-    createdAt     : new Date().toISOString()
+    id: 'ORD-' + Date.now(),
+    customerName: customerName || 'Walk-in',
+    customerPhone: customerPhone || '',
+    products: prods || [],
+    total: parseFloat(total) || 0,
+    notes: notes || '',
+    status: 'Pending',
+    createdAt: new Date().toISOString()
   };
   db.orders.unshift(order);
   saveData();
@@ -534,21 +546,21 @@ app.post('/orders', verifyToken, (req, res) => {
 
 app.post('/order/create', (req, res) => {
   const { customerName, customerPhone, customerAddress, productId, quantity } = req.body;
-  const prod        = db.products.find(p => p.id === parseInt(productId));
-  const productName = prod ? prod.name     : `Product #${productId}`;
-  const productPrice= prod ? (prod.offerPrice || 0) : 0;
-  const qty         = parseInt(quantity) || 1;
+  const prod = db.products.find(p => p.id === parseInt(productId));
+  const productName = prod ? prod.name : `Product #${productId}`;
+  const productPrice = prod ? (prod.offerPrice || 0) : 0;
+  const qty = parseInt(quantity) || 1;
   const order = {
-    id              : 'ORD-' + Date.now(),
-    customerName    : customerName    || 'Online Customer',
-    customerPhone   : customerPhone   || '',
-    customerAddress : customerAddress || '',
-    products        : [{ id: productId, name: productName, price: productPrice, qty }],
-    total           : productPrice * qty,
-    notes           : customerAddress || '',
-    status          : 'Pending',
-    source          : 'productpage',
-    createdAt       : new Date().toISOString()
+    id: 'ORD-' + Date.now(),
+    customerName: customerName || 'Online Customer',
+    customerPhone: customerPhone || '',
+    customerAddress: customerAddress || '',
+    products: [{ id: productId, name: productName, price: productPrice, qty }],
+    total: productPrice * qty,
+    notes: customerAddress || '',
+    status: 'Pending',
+    source: 'productpage',
+    createdAt: new Date().toISOString()
   };
   db.orders.unshift(order);
   saveData();
@@ -558,19 +570,19 @@ app.post('/order/create', (req, res) => {
 
 app.post('/order/status', verifyToken, (req, res) => {
   const { id, status } = req.body;
-  const validStatuses  = ['Pending','Ready to Move','Delivered','Cancelled'];
+  const validStatuses = ['Pending', 'Ready to Move', 'Delivered', 'Cancelled'];
   if (!validStatuses.includes(status))
     return res.json({ success: false, message: 'Invalid status' });
   const order = db.orders.find(o => o.id === id);
   if (!order) return res.json({ success: false, message: 'Order not found' });
-  order.status    = status;
+  order.status = status;
   order.updatedAt = new Date().toISOString();
   saveData();
   res.json({ success: true, order });
 });
 
 app.delete('/orders/:id', verifyToken, (req, res) => {
-  const id  = req.params.id;
+  const id = req.params.id;
   const idx = db.orders.findIndex(o => o.id === id);
   if (idx === -1) return res.json({ success: false, message: 'Order not found' });
   db.orders.splice(idx, 1);
@@ -583,30 +595,36 @@ app.delete('/orders/:id', verifyToken, (req, res) => {
 ══════════════════════════════════════════════════════════════ */
 app.get('/analytics/dashboard', verifyToken, (_, res) => {
   const lowStockCount = db.products.filter(p => ((p.stock || 0) - (p.sold || 0)) < 10).length;
-  const totalSales    = db.orders
+  const totalSales = db.orders
     .filter(o => o.status === 'Delivered')
     .reduce((s, o) => s + (parseFloat(o.total) || 0), 0);
-  res.json({ success: true, stats: {
-    totalProducts   : db.products.length,
-    totalRelevant   : db.relevantProducts.length,
-    totalOrders     : db.orders.length,
-    pendingOrders   : db.orders.filter(o => o.status === 'Pending').length,
-    deliveredOrders : db.orders.filter(o => o.status === 'Delivered').length,
-    totalSales,
-    lowStockCount
-  }});
+  res.json({
+    success: true, stats: {
+      totalProducts: db.products.length,
+      totalRelevant: db.relevantProducts.length,
+      totalOrders: db.orders.length,
+      pendingOrders: db.orders.filter(o => o.status === 'Pending').length,
+      deliveredOrders: db.orders.filter(o => o.status === 'Delivered').length,
+      totalSales,
+      lowStockCount
+    }
+  });
 });
 
 /* ─── health check ──────────────────────────────────────────── */
 app.get('/api/health', (_, res) => {
-  res.json({ ok: true,
-    env        : process.env.NODE_ENV || 'development',
-    baseUrl    : BASE_URL,
-    port       : PORT,
-    products   : db.products.length,
-    orders     : db.orders.length,
-    users      : db.users.length,
-    cloudinary : { configured: !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) }
+  res.json({
+    ok: true,
+    env: process.env.NODE_ENV || 'development',
+    baseUrl: BASE_URL,
+    port: PORT,
+    products: db.products.length,
+    orders: db.orders.length,
+    users: db.users.length,
+    cloudinary: {
+      configured: !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY),
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'MISSING'
+    }
   });
 });
 
@@ -615,7 +633,7 @@ app.get('/api/health', (_, res) => {
 ══════════════════════════════════════════════════════════════ */
 app.listen(PORT, () => {
   console.log('\n╔════════════════════════════════════════════════════════════╗');
-  console.log('║   Manju Paper Plate MFG — Server v5.1 (Render Fix)        ║');
+  console.log('║   Manju Paper Plate MFG — Server v5.2 (Cloudinary FIXED)  ║');
   console.log('╚════════════════════════════════════════════════════════════╝');
   console.log(`\n  🔧 Admin Panel  →  ${BASE_URL}/`);
   console.log(`  🔧 Admin Panel  →  ${BASE_URL}/admin.html`);
