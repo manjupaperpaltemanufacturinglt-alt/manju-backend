@@ -1,1 +1,114 @@
-
+{
+  "users": [
+    {
+      "id": 1775672768253,
+      "name": "manju",
+      "email": "debopriyodey807@gmail.com",
+      "password": "$2b$10$p3KVhB.2aJ5DI1b0JA6J4uTtHgLCgVBzkTjlJkx/.w3N42/NHipKm",
+      "createdAt": "2026-04-08T18:26:08.253Z"
+    },
+    {
+      "id": 1775710536955,
+      "name": "debopriyodey",
+      "email": "creapixelate@gmail.com",
+      "password": "$2b$10$seiWei0mZYQ67kgQN3Y3c.vuC6R3fu/rIRP3E8TVlW6OV774ajQw.",
+      "createdAt": "2026-04-09T04:55:36.955Z"
+    },
+    {
+      "id": 1775715405494,
+      "name": "manju paper palte manufacturingltd",
+      "email": "manjupaperpaltemanufacturinglt@gmail.com",
+      "password": "$2b$10$nC7OWypn6gWSvK353sn9POMF6467r8xQBCZRpSKXIf2ZFvgxNJphW",
+      "createdAt": "2026-04-09T06:16:45.558Z"
+    }
+  ],
+  "products": [
+    {
+      "id": 6,
+      "name": "12 inch disposble paper",
+      "originalPrice": 200,
+      "offerPrice": 100,
+      "size": "12",
+      "category": "12inch",
+      "badge": "top",
+      "description": "fuyfuyfuyfufkfutfdutddtkdtkdt",
+      "images": [
+        "http://localhost:5000/upload/prod-1775727600379-54322289.png",
+        "http://localhost:5000/upload/prod-1775727600379-256472122.png",
+        "http://localhost:5000/upload/prod-1775727600380-848633716.png",
+        "http://localhost:5000/upload/prod-1775727600381-117006245.png",
+        "http://localhost:5000/upload/prod-1775727600382-488629070.png"
+      ],
+      "image": "http://localhost:5000/upload/prod-1775727600379-54322289.png",
+      "stock": 2,
+      "sold": 0,
+      "available": 2,
+      "createdAt": "2026-04-09T09:40:00.384Z",
+      "updatedAt": "2026-04-09T09:40:51.101Z"
+    },
+    {
+      "id": 5,
+      "name": "6inch",
+      "originalPrice": 100,
+      "offerPrice": 90,
+      "size": "6",
+      "category": "6inch",
+      "badge": "new",
+      "description": "uyuy8ty8tyt",
+      "images": [
+        "http://localhost:5000/upload/prod-1775721953583-917591591.png",
+        "http://localhost:5000/upload/prod-1775721953591-428552134.png",
+        "http://localhost:5000/upload/prod-1775721953596-183475335.png"
+      ],
+      "image": "http://localhost:5000/upload/prod-1775721953583-917591591.png",
+      "stock": 80,
+      "sold": 0,
+      "available": 80,
+      "createdAt": "2026-04-09T08:05:53.604Z",
+      "updatedAt": "2026-04-09T10:12:13.778Z"
+    }
+  ],
+  "relevantProducts": [
+    {
+      "id": 4,
+      "name": "wrtrwttr",
+      "offerPrice": 4,
+      "originalPrice": 8,
+      "category": "8inch",
+      "badge": "hot",
+      "images": [
+        "http://localhost:5000/upload/prod-1775727182497-343338543.jpeg",
+        "http://localhost:5000/upload/prod-1775727182507-195775448.jpeg",
+        "http://localhost:5000/upload/prod-1775727182517-358572393.jpeg"
+      ],
+      "image": "http://localhost:5000/upload/prod-1775727182497-343338543.jpeg",
+      "isRelevant": true,
+      "createdAt": "2026-04-09T09:33:02.523Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "ORD-1775729497015",
+      "customerName": "crazy and esy drawing and art",
+      "customerPhone": "09083644158",
+      "customerAddress": "Kolkata",
+      "products": [
+        {
+          "id": 5,
+          "name": "6inch",
+          "price": 90,
+          "qty": 1
+        }
+      ],
+      "total": 90,
+      "notes": "Kolkata",
+      "status": "Delivered",
+      "source": "productpage",
+      "createdAt": "2026-04-09T10:11:37.015Z",
+      "updatedAt": "2026-04-09T10:11:52.049Z"
+    }
+  ],
+  "nextProductId": 7,
+  "nextRelId": 5,
+  "nextOrderId": 1
+}
