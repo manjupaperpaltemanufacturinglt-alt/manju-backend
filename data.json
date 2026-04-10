@@ -1,3 +1,15 @@
+if (!fs.existsSync(DATA_FILE)) {
+  fs.writeFileSync(DATA_FILE, JSON.stringify({
+    users: [],
+    products: [],
+    relevantProducts: [],
+    orders: [],
+    nextProductId: 1,
+    nextRelId: 1,
+    nextOrderId: 1
+  }, null, 2));
+}
+
 {
   "users": [
     {
