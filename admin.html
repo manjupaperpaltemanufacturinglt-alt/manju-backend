@@ -41,6 +41,8 @@
     .tp-store { background:var(--pur); color:#fff; padding:8px 14px; border-radius:30px; font-size:.78rem; text-decoration:none; }
     .logout-btn { background:#f0f2f0; border:1px solid var(--border); padding:6px 14px; border-radius:30px; cursor:pointer; font-size:.8rem; }
     .logout-btn:hover { background:var(--red); color:#fff; }
+    .migrate-btn { background:var(--warn); color:#fff; border:none; padding:6px 14px; border-radius:30px; cursor:pointer; font-size:.78rem; display:flex; align-items:center; gap:6px; transition:.2s; }
+    .migrate-btn:hover { background:#e68900; transform:scale(1.02); }
     .sec { padding:24px 28px 60px; }
     .card { background:var(--card); border-radius:18px; border:1px solid var(--border); overflow:hidden; }
     .card-hd { padding:18px 22px 0; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
@@ -169,6 +171,9 @@
     .order-prod-row select { flex:1; }
     .order-prod-row input  { width:80px; }
     .order-prod-row button { padding:8px 10px; border:1px solid var(--border); border-radius:8px; cursor:pointer; background:#fff; color:var(--red); }
+    .migration-progress { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; padding:30px; border-radius:20px; box-shadow:0 10px 40px rgba(0,0,0,.2); z-index:10001; text-align:center; min-width:300px; }
+    .migration-progress .spinner { width:40px; height:40px; border:4px solid var(--border); border-top-color:var(--g); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 15px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -206,7 +211,8 @@
     </div>
     <div class="topbar-r">
       <div class="tp-pill"><i class="fas fa-box"></i><span id="totalTxt">0 products</span></div>
-      <a class="tp-store" href="/productpage.html" target="_blank"><i class="fas fa-external-link-alt"></i> Store</a>
+      <button class="migrate-btn" id="migrateBtn"><i class="fas fa-cloud-upload-alt"></i> Fix Image URLs</button>
+      <a class="tp-store" href="/store" target="_blank"><i class="fas fa-external-link-alt"></i> Store</a>
       <button class="logout-btn" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</button>
     </div>
   </div>
@@ -333,12 +339,9 @@
       <div class="card-hd"><i class="fas fa-boxes"></i><h3>Inventory</h3></div>
       <div style="padding:0 22px 22px;overflow-x:auto;">
         <table class="inv-table">
-          <thead><tr>
-            <th>Product</th><th>Category</th><th>Stock</th>
-            <th>Sold</th><th>Available</th><th>Status</th><th>Update</th>
-           </thead>
+          <thead><tr><th>Product</th><th>Category</th><th>Stock</th><th>Sold</th><th>Available</th><th>Status</th><th>Update</th></tr></thead>
           <tbody id="invBody"></tbody>
-         </table>
+        </table>
       </div>
     </div>
   </div>
@@ -361,12 +364,9 @@
       </div>
       <div style="padding:0 22px 22px;overflow-x:auto;">
         <table class="ord-table">
-          <thead><tr>
-            <th>Order ID</th><th>Customer</th><th>Products</th>
-            <th>Total</th><th>Status</th><th>Date</th><th>Action</th>
-           </thead>
+          <thead><tr><th>Order ID</th><th>Customer</th><th>Products</th><th>Total</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
           <tbody id="ordBody"></tbody>
-         </table>
+        </table>
       </div>
     </div>
   </div>
@@ -473,9 +473,9 @@
 
 <script>
 /* ════════════════════════════════════════════════════
-   CONFIG & STATE - UPDATED FOR RENDER DEPLOYMENT
+   CONFIG & STATE - UPDATED FOR BACKEND FOLDER
 ════════════════════════════════════════════════════ */
-const API_URL = "https://manju-backend-1.onrender.com";
+const API_URL = window.location.origin;
 let products = [], relProds = [], orders = [];
 let selFiles = [], relSelFiles = [], selBadge = '';
 
@@ -487,10 +487,67 @@ const CAT_LABELS = {
 
 /* ── token helpers ── */
 const getToken   = ()  => localStorage.getItem('token');
-// JSON routes
 const authHdr    = ()  => ({ 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' });
-// Multipart routes — browser sets Content-Type with boundary automatically
 const authFDHdr  = ()  => ({ 'Authorization': `Bearer ${getToken()}` });
+
+/* ════════════════════════════════════════════════════
+   MIGRATION FUNCTION - FIX IMAGE URLS TO CLOUDINARY
+════════════════════════════════════════════════════ */
+async function migrateImages() {
+  const token = getToken();
+  if (!token) {
+    toast('Please login first', true);
+    return;
+  }
+  
+  // Show confirmation dialog
+  if (!confirm('⚠️ This will fix all product image URLs to use Cloudinary.\n\nThis operation:\n• Removes localhost URLs\n• Updates all product images\n• Cannot be undone\n\nContinue?')) {
+    return;
+  }
+  
+  // Show progress overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'migration-progress';
+  overlay.innerHTML = `
+    <div class="spinner"></div>
+    <h3 style="margin-bottom:10px;">Fixing Image URLs...</h3>
+    <p style="color:var(--muted);font-size:.85rem;">Converting localhost URLs to Cloudinary</p>
+    <p id="migrationStatus" style="margin-top:10px;font-size:.8rem;">Processing...</p>
+  `;
+  document.body.appendChild(overlay);
+  
+  try {
+    const response = await fetch(`${API_URL}/migrate-to-cloudinary`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      toast(`✅ ${data.message}`);
+      document.getElementById('migrationStatus').innerHTML = `✓ Complete! ${data.message}`;
+      setTimeout(() => {
+        overlay.remove();
+        // Refresh all data
+        fetchAll();
+        fetchInventory();
+        fetchOrders();
+        fetchDashboard();
+      }, 2000);
+    } else {
+      throw new Error(data.message || 'Migration failed');
+    }
+  } catch (error) {
+    console.error('Migration error:', error);
+    toast('❌ Migration failed: ' + error.message, true);
+    document.getElementById('migrationStatus').innerHTML = `❌ Failed: ${error.message}`;
+    setTimeout(() => overlay.remove(), 3000);
+  }
+}
 
 /* ════════════════════════════════════════════════════
    AUTH
@@ -615,8 +672,9 @@ async function doReset() {
 }
 
 document.getElementById('logoutBtn').onclick = () => { localStorage.removeItem('token'); showAuth(); };
+document.getElementById('migrateBtn').onclick = migrateImages;
 
-/* ── simple fetch helpers (UPDATED to use API_URL) ── */
+/* ── simple fetch helpers ── */
 async function post(path, body) {
   const r = await fetch(API_URL + path, { method:'POST', headers: authHdr(), body: JSON.stringify(body) });
   return r.json();
@@ -636,46 +694,71 @@ async function get(path, auth=false) {
 }
 
 /* ════════════════════════════════════════════════════
-   IMAGE DROP ZONE  (shared utility)
+   IMAGE DROP ZONE (FIXED)
 ════════════════════════════════════════════════════ */
+function renderThumbs(arr, stripId, ctrId, max) {
+  const strip = document.getElementById(stripId);
+  if (!strip) return;
+  strip.innerHTML = '';
+  
+  arr.forEach((f, i) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const div = document.createElement('div');
+      div.className = 'titem';
+      div.innerHTML = `<img src="${ev.target.result}"><span class="trem"><i class="fas fa-times"></i></span>`;
+      div.querySelector('.trem').onclick = () => {
+        arr.splice(i, 1);
+        renderThumbs(arr, stripId, ctrId, max);
+      };
+      strip.appendChild(div);
+    };
+    reader.readAsDataURL(f);
+  });
+  
+  const ctr = document.getElementById(ctrId);
+  if (ctr) ctr.textContent = `${arr.length} / ${max} images selected`;
+}
+
 function initDz(dzId, btnId, inputId, arr, stripId, ctrId, max, onFirst) {
   const dz  = document.getElementById(dzId);
   const btn = document.getElementById(btnId);
   const inp = document.getElementById(inputId);
+  if (!dz || !btn || !inp) return;
+  
   btn.onclick = () => inp.click();
-  inp.onchange = e => { addFiles(arr, Array.from(e.target.files), stripId, ctrId, max, onFirst); inp.value=''; };
+  inp.onchange = e => { 
+    const files = Array.from(e.target.files);
+    const toAdd = files.filter(f => f.type.startsWith('image/')).slice(0, max - arr.length);
+    toAdd.forEach(f => arr.push(f));
+    renderThumbs(arr, stripId, ctrId, max);
+    if (onFirst && arr.length) onFirst(arr[0]);
+    inp.value = '';
+  };
   dz.ondragover  = e => { e.preventDefault(); dz.classList.add('dragover'); };
   dz.ondragleave = ()  => dz.classList.remove('dragover');
-  dz.ondrop = e => { e.preventDefault(); dz.classList.remove('dragover'); addFiles(arr, Array.from(e.dataTransfer.files), stripId, ctrId, max, onFirst); };
+  dz.ondrop = e => { 
+    e.preventDefault(); dz.classList.remove('dragover'); 
+    const files = Array.from(e.dataTransfer.files);
+    const toAdd = files.filter(f => f.type.startsWith('image/')).slice(0, max - arr.length);
+    toAdd.forEach(f => arr.push(f));
+    renderThumbs(arr, stripId, ctrId, max);
+    if (onFirst && arr.length) onFirst(arr[0]);
+  };
 }
 
-function addFiles(arr, files, stripId, ctrId, max, onFirst) {
-  const toAdd = files.filter(f => f.type.startsWith('image/')).slice(0, max - arr.length);
-  arr.push(...toAdd);
-  renderThumbs(arr, stripId, ctrId, max);
-  if (onFirst && arr.length) onFirst(arr[0]);
-}
+// Initialize drop zones
+initDz('dz','brBtn','imgIn', selFiles,'thumbStrip','imgCtr',5, f => {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('miniImg').src = ev.target.result;
+    document.getElementById('miniImg').style.display = 'block';
+    document.getElementById('miniEmpty').style.display = 'none';
+  };
+  reader.readAsDataURL(f);
+});
 
-function renderThumbs(arr, stripId, ctrId, max) {
-  const strip = document.getElementById(stripId);
-  strip.innerHTML = '';
-  arr.forEach((f, i) => {
-    const r = new FileReader();
-    r.onload = ev => {
-      const d = document.createElement('div'); d.className = 'titem';
-      d.innerHTML = `<img src="${ev.target.result}"><span class="trem"><i class="fas fa-times"></i></span>`;
-      d.querySelector('.trem').onclick = () => { arr.splice(i,1); renderThumbs(arr,stripId,ctrId,max); };
-      strip.appendChild(d);
-    };
-    r.readAsDataURL(f);
-  });
-  document.getElementById(ctrId).textContent = `${arr.length} / ${max} images selected`;
-}
-
-/* ════════════════════════════════════════════════════
-   UPLOAD PRODUCT
-════════════════════════════════════════════════════ */
-initDz('dz','brBtn','imgIn', selFiles,'thumbStrip','imgCtr',5, f => previewImg(f));
+initDz('relDz','relBrBtn','relImgIn', relSelFiles,'relThumbStrip','relImgCtr',5, null);
 
 // Badge picker
 document.querySelectorAll('#bdgRow .bo').forEach(opt => {
@@ -698,20 +781,9 @@ document.getElementById('fMRP').oninput   = e => document.getElementById('miniOr
 document.getElementById('fCat').onchange  = e => document.getElementById('miniCat').textContent = CAT_LABELS[e.target.value] || 'Category';
 document.getElementById('fStock').oninput = e => document.getElementById('miniStockTag').textContent = `Stock: ${e.target.value||0}`;
 
-function previewImg(file) {
-  const r = new FileReader();
-  r.onload = ev => {
-    const img = document.getElementById('miniImg');
-    img.src = ev.target.result; img.style.display='block';
-    document.getElementById('miniEmpty').style.display='none';
-  };
-  r.readAsDataURL(file);
-}
-function clearPreviewImg() {
-  document.getElementById('miniImg').style.display='none';
-  document.getElementById('miniEmpty').style.display='flex';
-}
-
+/* ════════════════════════════════════════════════════
+   UPLOAD PRODUCT (FIXED)
+════════════════════════════════════════════════════ */
 document.getElementById('upBtn').onclick = async () => {
   const name  = document.getElementById('fName').value.trim();
   const offer = document.getElementById('fOffer').value;
@@ -733,7 +805,7 @@ document.getElementById('upBtn').onclick = async () => {
   fd.append('description',   document.getElementById('fDesc').value);
   fd.append('badge',         selBadge);
   fd.append('stock',         document.getElementById('fStock').value || 1000);
-  selFiles.forEach(f => fd.append('images', f));   // field name = 'images'
+  selFiles.forEach(f => fd.append('images', f));
 
   try {
     const r = await fetch(`${API_URL}/upload-product`, { method:'POST', headers: authFDHdr(), body: fd });
@@ -749,12 +821,13 @@ document.getElementById('upBtn').onclick = async () => {
 };
 
 function resetUploadForm() {
-  selFiles.length = 0; selBadge = '';
+  selFiles = []; selBadge = '';
   ['fName','fOffer','fMRP','fSize','fDesc'].forEach(id => document.getElementById(id).value='');
   document.getElementById('fCat').value='';
   document.getElementById('fStock').value='1000';
   renderThumbs(selFiles,'thumbStrip','imgCtr',5);
-  clearPreviewImg();
+  document.getElementById('miniImg').style.display='none';
+  document.getElementById('miniEmpty').style.display='flex';
   document.querySelectorAll('#bdgRow .bo').forEach(o => o.className='bo');
   document.querySelector('#bdgRow [data-v=""]').classList.add('s-none');
   document.getElementById('miniBdg').style.display='none';
@@ -818,36 +891,31 @@ document.getElementById('pSrch').addEventListener('input', renderProdGrid);
 document.getElementById('pFil').addEventListener('change', renderProdGrid);
 
 /* ════════════════════════════════════════════════════
-   RELEVANT PRODUCTS
-   GET  /relevant
-   POST /upload-relevant  (field: 'images', array)
-   DELETE /relevant/:id
+   RELEVANT PRODUCTS (SIMPLIFIED)
 ════════════════════════════════════════════════════ */
-initDz('relDz','relBrBtn','relImgIn', relSelFiles,'relThumbStrip','relImgCtr',5, null);
-
 document.getElementById('addRelBtn').onclick   = () => document.getElementById('relModal').classList.remove('hidden');
 document.getElementById('closeRelModal').onclick = () => {
   document.getElementById('relModal').classList.add('hidden');
-  relSelFiles.length=0; renderThumbs(relSelFiles,'relThumbStrip','relImgCtr',5);
+  relSelFiles=[]; renderThumbs(relSelFiles,'relThumbStrip','relImgCtr',5);
 };
 
 document.getElementById('relUpBtn').onclick = async () => {
   const name  = document.getElementById('rName').value.trim();
   const offer = document.getElementById('rOffer').value;
-  if (!name)              return toast('Enter product name', true);
-  if (!offer||+offer<=0)  return toast('Enter valid offer price', true);
+  if (!name) return toast('Enter product name', true);
+  if (!offer||+offer<=0) return toast('Enter valid offer price', true);
   if (!relSelFiles.length) return toast('Select at least 1 image', true);
 
   const btn = document.getElementById('relUpBtn');
   btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Uploading...';
 
   const fd = new FormData();
-  fd.append('productName',   name);
-  fd.append('offerPrice',    offer);
+  fd.append('productName', name);
+  fd.append('offerPrice', offer);
   fd.append('originalPrice', document.getElementById('rMRP').value);
-  fd.append('category',      document.getElementById('rCat').value);
-  fd.append('badge',         document.getElementById('rBadge').value);
-  relSelFiles.forEach(f => fd.append('images', f));   // field name = 'images'
+  fd.append('category', document.getElementById('rCat').value);
+  fd.append('badge', document.getElementById('rBadge').value);
+  relSelFiles.forEach(f => fd.append('images', f));
 
   try {
     const r = await fetch(`${API_URL}/upload-relevant`, { method:'POST', headers: authFDHdr(), body: fd });
@@ -856,7 +924,7 @@ document.getElementById('relUpBtn').onclick = async () => {
       toast('✅ Relevant product added!');
       relProds.unshift(d.product); updateCounters(); renderRelGrid();
       document.getElementById('relModal').classList.add('hidden');
-      relSelFiles.length=0; renderThumbs(relSelFiles,'relThumbStrip','relImgCtr',5);
+      relSelFiles=[]; renderThumbs(relSelFiles,'relThumbStrip','relImgCtr',5);
       ['rName','rOffer','rMRP'].forEach(id => document.getElementById(id).value='');
     } else toast(d.message||'Upload failed', true);
   } catch(e) { toast('Server error: ' + e.message, true); }
@@ -889,9 +957,7 @@ async function delRelevant(id) {
 }
 
 /* ════════════════════════════════════════════════════
-   INVENTORY
-   GET  /inventory   (no auth needed — server is public)
-   PUT  /inventory/:id  { stock }
+   INVENTORY (SIMPLIFIED)
 ════════════════════════════════════════════════════ */
 async function fetchInventory() {
   try {
@@ -904,42 +970,26 @@ async function fetchInventory() {
     }
     tbody.innerHTML = d.inventory.map(item => `
       <tr>
-        <td>
-          <div style="display:flex;align-items:center;gap:9px">
-            <img class="inv-img" src="${item.image||''}"
-                 onerror="this.src='https://placehold.co/36x36/e8f5e9/2d7a3a?text=IMG'">
-            <span style="font-weight:600">${item.name}</span>
-          </div>
-        </td>
+        <td><div style="display:flex;align-items:center;gap:9px"><img class="inv-img" src="${item.image||''}" onerror="this.src='https://placehold.co/36x36/e8f5e9/2d7a3a?text=IMG'"><span style="font-weight:600">${item.name}</span></div></td>
         <td><span class="pc-cat">${CAT_LABELS[item.category]||item.category}</span></td>
         <td>${item.stock}</td>
         <td>${item.sold}</td>
         <td style="font-weight:700;color:${item.available<10?'var(--red)':'var(--g)'}">${item.available}</td>
-        <td>${item.available<10
-          ? '<span class="low-badge">⚠ Low Stock</span>'
-          : '<span class="ok-badge">✓ OK</span>'}</td>
-        <td>
-          <input type="number" class="stock-input" id="stk_${item.id}" value="${item.stock}" min="0">
-          <button class="save-stock-btn" onclick="updateStock(${item.id})">Save</button>
-        </td>
+        <td>${item.available<10 ? '<span class="low-badge">⚠ Low Stock</span>' : '<span class="ok-badge">✓ OK</span>'}</td>
+        <td><input type="number" class="stock-input" id="stk_${item.id}" value="${item.stock}" min="0"><button class="save-stock-btn" onclick="updateStock(${item.id})">Save</button></td>
       </tr>`).join('');
   } catch(e) { console.error('Inventory error', e); }
 }
 
 async function updateStock(id) {
   const val = document.getElementById(`stk_${id}`)?.value;
-  // PUT /inventory/:id  with { stock }
   const d = await put(`/inventory/${id}`, { stock: parseInt(val)||0 });
   if (d.success) { toast('Stock updated ✓'); fetchInventory(); }
   else toast(d.message||'Update failed', true);
 }
 
 /* ════════════════════════════════════════════════════
-   ORDERS
-   GET    /orders
-   POST   /orders
-   POST   /order/status  { id, status }
-   DELETE /orders/:id
+   ORDERS (SIMPLIFIED)
 ════════════════════════════════════════════════════ */
 async function fetchOrders() {
   try {
@@ -961,35 +1011,27 @@ function renderOrders() {
     const date  = new Date(o.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
     return `<tr>
       <td style="font-size:.72rem;font-family:monospace">${o.id}</td>
-      <td>
-        <div style="font-weight:600">${o.customerName}</div>
-        <div style="font-size:.68rem;color:var(--muted)">${o.customerPhone||''}</div>
-      </td>
+      <td><div style="font-weight:600">${o.customerName}</div><div style="font-size:.68rem;color:var(--muted)">${o.customerPhone||''}</div></td>
       <td style="font-size:.75rem;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${prods}</td>
       <td style="font-weight:800;color:var(--g)">₹${o.total}</td>
-      <td>
-        <select class="status-sel" onchange="updateOrderStatus('${o.id}',this.value)">
-          <option value="Pending"        ${o.status==='Pending'?'selected':''}>⏳ Pending</option>
-          <option value="Ready to Move"  ${o.status==='Ready to Move'?'selected':''}>📦 Ready to Move</option>
-          <option value="Delivered"      ${o.status==='Delivered'?'selected':''}>✅ Delivered</option>
-          <option value="Cancelled"      ${o.status==='Cancelled'?'selected':''}>❌ Cancelled</option>
+      <td><select class="status-sel" onchange="updateOrderStatus('${o.id}',this.value)">
+          <option value="Pending" ${o.status==='Pending'?'selected':''}>⏳ Pending</option>
+          <option value="Ready to Move" ${o.status==='Ready to Move'?'selected':''}>📦 Ready to Move</option>
+          <option value="Delivered" ${o.status==='Delivered'?'selected':''}>✅ Delivered</option>
+          <option value="Cancelled" ${o.status==='Cancelled'?'selected':''}>❌ Cancelled</option>
         </select>
         <span class="status-pill ${sClass[o.status]||'s-Pending'}" style="margin-left:5px">${o.status}</span>
-      </td>
+       </td>
       <td style="font-size:.72rem;color:var(--muted)">${date}</td>
       <td><button class="del-btn" onclick="delOrder('${o.id}')"><i class="fas fa-trash"></i></button></td>
-    </tr>`;
+    </table>`;
   }).join('');
 }
 
 async function updateOrderStatus(id, status) {
-  // POST /order/status  { id, status }
   const d = await post('/order/status', { id, status });
-  if (d.success) {
-    const idx = orders.findIndex(o=>o.id===id);
-    if (idx!==-1) orders[idx].status=status;
-    renderOrders(); toast('Status updated');
-  } else toast(d.message||'Failed', true);
+  if (d.success) { const idx = orders.findIndex(o=>o.id===id); if (idx!==-1) orders[idx].status=status; renderOrders(); toast('Status updated'); }
+  else toast(d.message||'Failed', true);
 }
 
 async function delOrder(id) {
@@ -1002,38 +1044,23 @@ async function delOrder(id) {
 document.getElementById('ordFilter').onchange = renderOrders;
 
 // New order modal
-document.getElementById('addOrderBtn').onclick    = () => { populateOrderSelects(); document.getElementById('orderModal').classList.remove('hidden'); };
+document.getElementById('addOrderBtn').onclick = () => { populateOrderSelects(); document.getElementById('orderModal').classList.remove('hidden'); };
 document.getElementById('closeOrderModal').onclick = () => document.getElementById('orderModal').classList.add('hidden');
 
 function populateOrderSelects() {
   document.querySelectorAll('.ord-prod-sel').forEach(sel => {
     const cur = sel.value;
-    sel.innerHTML = '<option value="">-- Select Product --</option>' +
-      products.map(p=>`<option value="${p.id}" data-price="${p.offerPrice}" data-name="${p.name}">${p.name} — ₹${p.offerPrice}</option>`).join('');
+    sel.innerHTML = '<option value="">-- Select Product --</option>' + products.map(p=>`<option value="${p.id}" data-price="${p.offerPrice}" data-name="${p.name}">${p.name} — ₹${p.offerPrice}</option>`).join('');
     sel.value = cur;
   });
 }
 
 document.getElementById('addOrderProdRow').onclick = () => {
-  const row = document.createElement('div');
-  row.className = 'order-prod-row';
-  row.innerHTML = `
-    <select class="ord-prod-sel">
-      <option value="">-- Select Product --</option>
-      ${products.map(p=>`<option value="${p.id}" data-price="${p.offerPrice}" data-name="${p.name}">${p.name} — ₹${p.offerPrice}</option>`).join('')}
-    </select>
-    <input type="number" class="ord-qty" placeholder="Qty" min="1" value="1">
-    <button type="button" class="ord-rem-row"><i class="fas fa-times"></i></button>`;
+  const row = document.createElement('div'); row.className = 'order-prod-row';
+  row.innerHTML = `<select class="ord-prod-sel"><option value="">-- Select Product --</option>${products.map(p=>`<option value="${p.id}" data-price="${p.offerPrice}" data-name="${p.name}">${p.name} — ₹${p.offerPrice}</option>`).join('')}</select><input type="number" class="ord-qty" placeholder="Qty" min="1" value="1"><button type="button" class="ord-rem-row"><i class="fas fa-times"></i></button>`;
   row.querySelector('.ord-rem-row').onclick = () => row.remove();
   document.getElementById('orderProdsContainer').appendChild(row);
 };
-
-document.getElementById('orderProdsContainer').addEventListener('click', e => {
-  if (e.target.closest('.ord-rem-row')) {
-    const row = e.target.closest('.order-prod-row');
-    if (document.querySelectorAll('.order-prod-row').length > 1) row.remove();
-  }
-});
 
 document.getElementById('submitOrderBtn').onclick = async () => {
   const custName  = document.getElementById('ordCustName').value.trim() || 'Walk-in Customer';
@@ -1061,31 +1088,23 @@ document.getElementById('submitOrderBtn').onclick = async () => {
 
 /* ════════════════════════════════════════════════════
    DASHBOARD
-   GET /analytics/dashboard  → { success, stats: { ... } }
 ════════════════════════════════════════════════════ */
 async function fetchDashboard() {
   try {
     const d = await get('/analytics/dashboard', true);
     if (!d.success) return;
-    const s = d.stats;   // ← server wraps everything in .stats
+    const s = d.stats;
     const cards = [
-      { icon:'fas fa-box',                color:'#e8f5e9', ic:'#2d7a3a', val:s.totalProducts,   label:'Total Products' },
-      { icon:'fas fa-star',               color:'#f3e8ff', ic:'#7c3aed', val:s.totalRelevant,   label:'Relevant Products' },
-      { icon:'fas fa-shopping-cart',      color:'#fff3cd', ic:'#f5a623', val:s.totalOrders,     label:'Total Orders' },
-      { icon:'fas fa-clock',              color:'#fff3cd', ic:'#ff9800', val:s.pendingOrders,   label:'Pending Orders' },
-      { icon:'fas fa-check-circle',       color:'#e8f5e9', ic:'#2d7a3a', val:s.deliveredOrders, label:'Delivered' },
-      { icon:'fas fa-rupee-sign',         color:'#e8f5e9', ic:'#2d7a3a', val:`₹${(s.totalSales||0).toLocaleString()}`, label:'Total Sales' },
-      { icon:'fas fa-exclamation-triangle',color:'#fff5f5',ic:'#e53935', val:s.lowStockCount,  label:'Low Stock Items' },
+      { icon:'fas fa-box', color:'#e8f5e9', ic:'#2d7a3a', val:s.totalProducts, label:'Total Products' },
+      { icon:'fas fa-star', color:'#f3e8ff', ic:'#7c3aed', val:s.totalRelevant, label:'Relevant Products' },
+      { icon:'fas fa-shopping-cart', color:'#fff3cd', ic:'#f5a623', val:s.totalOrders, label:'Total Orders' },
+      { icon:'fas fa-clock', color:'#fff3cd', ic:'#ff9800', val:s.pendingOrders, label:'Pending Orders' },
+      { icon:'fas fa-check-circle', color:'#e8f5e9', ic:'#2d7a3a', val:s.deliveredOrders, label:'Delivered' },
+      { icon:'fas fa-rupee-sign', color:'#e8f5e9', ic:'#2d7a3a', val:`₹${(s.totalSales||0).toLocaleString()}`, label:'Total Sales' },
+      { icon:'fas fa-exclamation-triangle', color:'#fff5f5', ic:'#e53935', val:s.lowStockCount, label:'Low Stock Items' },
     ];
-    document.getElementById('dashGrid').innerHTML = cards.map(c=>`
-      <div class="stat-card">
-        <div class="stat-icon" style="background:${c.color};color:${c.ic}"><i class="${c.icon}"></i></div>
-        <div class="stat-val">${c.val}</div>
-        <div class="stat-label">${c.label}</div>
-      </div>`).join('');
-  } catch(e) {
-    document.getElementById('dashGrid').innerHTML='<div class="empty-state"><i class="fas fa-chart-line"></i><p>Dashboard unavailable</p></div>';
-  }
+    document.getElementById('dashGrid').innerHTML = cards.map(c=>`<div class="stat-card"><div class="stat-icon" style="background:${c.color};color:${c.ic}"><i class="${c.icon}"></i></div><div class="stat-val">${c.val}</div><div class="stat-label">${c.label}</div></div>`).join('');
+  } catch(e) { document.getElementById('dashGrid').innerHTML='<div class="empty-state"><i class="fas fa-chart-line"></i><p>Dashboard unavailable</p></div>'; }
 }
 
 /* ════════════════════════════════════════════════════
@@ -1100,19 +1119,12 @@ function updateCounters() {
 
 async function fetchAll() {
   try {
-    const [pr, rr] = await Promise.all([
-      get('/products'),
-      get('/relevant')            // ← correct endpoint (not /relevant-products)
-    ]);
+    const [pr, rr] = await Promise.all([get('/products'), get('/relevant')]);
     if (pr.success) products = pr.products;
     if (rr.success) relProds = rr.products;
     updateCounters(); renderRecent(); renderProdGrid(); renderRelGrid();
   } catch(e) { console.warn('Server not ready:', e.message); }
-
-  try {
-    const or = await get('/orders', true);
-    if (or.success) { orders = or.orders; updateCounters(); renderOrders(); }
-  } catch(e) {}
+  try { const or = await get('/orders', true); if (or.success) { orders = or.orders; updateCounters(); renderOrders(); } } catch(e) {}
 }
 
 /* ════════════════════════════════════════════════════
