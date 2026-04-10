@@ -1,15 +1,27 @@
 {
   "name": "manju-paperplate-backend",
-  "version": "2.0.0",
-  "description": "Manju Paper Plate MFG - Full Admin System",
+  "version": "2.1.0",
+  "description": "Manju Paper Plate MFG - Full Admin System with Cloudinary Support",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "build": "npm install",
+    "postinstall": "echo '✅ Dependencies installed successfully'"
   },
   "engines": {
-    "node": "18.x"
+    "node": "18.x",
+    "npm": "9.x"
   },
+  "keywords": [
+    "manju-paperplate",
+    "ecommerce",
+    "cloudinary",
+    "express",
+    "multer"
+  ],
+  "author": "Manju Paper Plate MFG",
+  "license": "MIT",
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.2",
@@ -23,5 +35,13 @@
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/manjupaperplate/manju-backend.git"
+  },
+  "bugs": {
+    "url": "https://github.com/manjupaperplate/manju-backend/issues"
+  },
+  "homepage": "https://manju-backend-13.onrender.com"
 }
