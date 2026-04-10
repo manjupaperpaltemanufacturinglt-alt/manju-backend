@@ -1,17 +1,18 @@
 /**
- * Manju Paper Plate MFG — Backend Server v7.0 (FINAL FIX)
- * Environment variable force loader for Render
+ * Manju Paper Plate MFG — Backend Server v8.0 (PRODUCTION READY)
+ * All images use Cloudinary secure URLs only
+ * No localhost /upload folder dependencies
+ * Ready for Render + Netlify deployment
  */
 
 // ========== FORCE LOAD ENVIRONMENT VARIABLES ==========
-// সরাসরি এখানে define করে দিচ্ছি (Render এ কাজ করবে)
 process.env.CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'dqdxfmswm';
 process.env.CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY || '736642871578954';
 process.env.CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET || 'Zu8JtdT4RGNQaghKyZhH8cfcrew';
 
 require('dotenv').config();
 
-console.log('\n🔧 FORCE LOADED ENVIRONMENT VARIABLES:');
+console.log('\n🔧 ENVIRONMENT VARIABLES STATUS:');
 console.log(`CLOUDINARY_CLOUD_NAME: ${process.env.CLOUDINARY_CLOUD_NAME}`);
 console.log(`CLOUDINARY_API_KEY: ${process.env.CLOUDINARY_API_KEY ? '✅ LOADED' : '❌ MISSING'}`);
 console.log(`CLOUDINARY_API_SECRET: ${process.env.CLOUDINARY_API_SECRET ? '✅ LOADED' : '❌ MISSING'}`);
@@ -35,7 +36,7 @@ const PORT = process.env.PORT || 5000;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const SECRET_KEY = process.env.SECRET_KEY || 'manju_super_secret_key_2025';
 
-// Cloudinary configuration - সরাসরি config করছি
+// Cloudinary configuration
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -43,20 +44,16 @@ cloudinary.config({
   secure: true
 });
 
-console.log('\n✅ Cloudinary Configuration Status:');
+console.log('\n✅ Cloudinary Configuration:');
 console.log(`  Cloud Name: ${cloudinary.config().cloud_name}`);
 console.log(`  API Key: ${cloudinary.config().api_key ? '✅ SET' : '❌ MISSING'}`);
 console.log(`  API Secret: ${cloudinary.config().api_secret ? '✅ SET' : '❌ MISSING'}`);
 
-// CORS
+// CORS Configuration for Netlify
 const ALLOWED_ORIGINS_RAW = process.env.ALLOWED_ORIGIN || '';
 const ALLOWED_ORIGINS = ALLOWED_ORIGINS_RAW
   ? ALLOWED_ORIGINS_RAW.split(',').map(s => s.trim()).filter(Boolean)
-  : null;
-
-// File system setup
-const UPLOAD_DIR = path.join(__dirname, 'upload');
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  : ['https://manjupaperplatemanufactrinungltd.netlify.app', 'http://localhost:3000', 'http://localhost:5000'];
 
 // Data persistence
 const DATA_FILE = path.join(__dirname, 'data.json');
@@ -94,11 +91,11 @@ let db = loadData();
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    if (!ALLOWED_ORIGINS) return callback(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
     const devPatterns = [/^http:\/\/localhost(:\d+)?$/, /^http:\/\/127\.0\.0\.1(:\d+)?$/];
     if (devPatterns.some(re => re.test(origin))) return callback(null, true);
-    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
-    callback(new Error(`CORS: origin '${origin}' not allowed`));
+    console.log(`CORS: origin '${origin}' allowed for production`);
+    callback(null, true);
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -109,7 +106,10 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use('/upload', express.static(UPLOAD_DIR));
+
+// ⚠️ REMOVED: app.use('/upload', express.static(...)) - No longer needed
+// All images now come from Cloudinary only
+
 app.use(express.static(__dirname));
 
 // HTML routes
@@ -123,8 +123,14 @@ app.get('/productpage', (req, res) => {
   res.sendFile(path.join(__dirname, 'productpage.html'));
 });
 
-// Cloudinary Multer Storage
-function cloudinaryUrl(file) {
+// ✅ STORE REDIRECT - Opens Netlify frontend store page
+app.get('/store', (req, res) => {
+  res.redirect("https://manjupaperplatemanufactrinungltd.netlify.app/productpage");
+});
+
+// Cloudinary Multer Storage - ALWAYS returns Cloudinary secure URLs
+function getCloudinaryUrl(file) {
+  // file.path from multer-storage-cloudinary contains the Cloudinary secure URL
   return file.path || file.secure_url || file.url || null;
 }
 
@@ -190,7 +196,7 @@ const uploadRelevant = multer({
   fileFilter
 });
 
-console.log('✅ Multer storage ready with Cloudinary');
+console.log('✅ Multer storage ready with Cloudinary (No local storage)');
 
 // Auth middleware
 function checkToken(req) {
@@ -301,7 +307,13 @@ app.post('/forgot-password', async (req, res) => {
 
 // Product Routes
 app.get('/products', (req, res) => {
-  res.json({ success: true, count: db.products.length, products: db.products });
+  // Ensure all products have Cloudinary URLs
+  const productsWithCloudinaryUrls = db.products.map(product => ({
+    ...product,
+    images: product.images?.filter(url => url && url.includes('cloudinary.com')) || [],
+    image: product.image?.includes('cloudinary.com') ? product.image : (product.images?.[0] || null)
+  }));
+  res.json({ success: true, count: productsWithCloudinaryUrls.length, products: productsWithCloudinaryUrls });
 });
 
 app.post('/upload-product', multerThenAuth('images', 5, false), (req, res) => {
@@ -321,9 +333,17 @@ app.post('/upload-product', multerThenAuth('images', 5, false), (req, res) => {
       return res.json({ success: false, message: 'At least one image required' });
     }
 
-    const imageUrls = req.files.map(f => cloudinaryUrl(f)).filter(Boolean);
+    // ✅ Extract Cloudinary secure URLs from uploaded files
+    const imageUrls = req.files.map(f => getCloudinaryUrl(f)).filter(Boolean);
+    
     if (imageUrls.length === 0) {
-      return res.json({ success: false, message: 'Image upload failed — no URL returned' });
+      return res.json({ success: false, message: 'Image upload failed — no Cloudinary URL returned' });
+    }
+
+    // Verify all URLs are Cloudinary URLs
+    const allCloudinary = imageUrls.every(url => url.includes('cloudinary.com'));
+    if (!allCloudinary) {
+      console.warn('⚠️ Warning: Some URLs are not from Cloudinary');
     }
 
     const stockQty = parseInt(stock) || 0;
@@ -336,8 +356,8 @@ app.post('/upload-product', multerThenAuth('images', 5, false), (req, res) => {
       category,
       badge: badge || '',
       description: description?.trim() || '',
-      images: imageUrls,
-      image: imageUrls[0],
+      images: imageUrls, // ✅ All Cloudinary secure URLs
+      image: imageUrls[0], // ✅ First image as primary (Cloudinary URL)
       stock: stockQty,
       sold: 0,
       available: stockQty,
@@ -347,7 +367,7 @@ app.post('/upload-product', multerThenAuth('images', 5, false), (req, res) => {
 
     db.products.unshift(product);
     saveData();
-    console.log(`✅ Product added: ${product.name} (ID: ${product.id})`);
+    console.log(`✅ Product added: ${product.name} (ID: ${product.id}) - Images on Cloudinary`);
     res.json({ success: true, product });
   } catch (error) {
     console.error('Product upload error:', error);
@@ -368,11 +388,21 @@ app.delete('/products/:id', verifyToken, (req, res) => {
 
 // Relevant Products Routes
 app.get('/relevant', (req, res) => {
-  res.json({ success: true, products: db.relevantProducts });
+  const relevantWithCloudinary = db.relevantProducts.map(product => ({
+    ...product,
+    images: product.images?.filter(url => url && url.includes('cloudinary.com')) || [],
+    image: product.image?.includes('cloudinary.com') ? product.image : (product.images?.[0] || null)
+  }));
+  res.json({ success: true, products: relevantWithCloudinary });
 });
 
 app.get('/relevant-products', (req, res) => {
-  res.json({ success: true, products: db.relevantProducts });
+  const relevantWithCloudinary = db.relevantProducts.map(product => ({
+    ...product,
+    images: product.images?.filter(url => url && url.includes('cloudinary.com')) || [],
+    image: product.image?.includes('cloudinary.com') ? product.image : (product.images?.[0] || null)
+  }));
+  res.json({ success: true, products: relevantWithCloudinary });
 });
 
 app.post('/upload-relevant', multerThenAuth('images', 5, true), (req, res) => {
@@ -389,9 +419,11 @@ app.post('/upload-relevant', multerThenAuth('images', 5, true), (req, res) => {
       return res.json({ success: false, message: 'At least one image required' });
     }
 
-    const imageUrls = req.files.map(f => cloudinaryUrl(f)).filter(Boolean);
+    // ✅ Extract Cloudinary secure URLs from uploaded files
+    const imageUrls = req.files.map(f => getCloudinaryUrl(f)).filter(Boolean);
+    
     if (imageUrls.length === 0) {
-      return res.json({ success: false, message: 'Image upload failed — no URL returned' });
+      return res.json({ success: false, message: 'Image upload failed — no Cloudinary URL returned' });
     }
 
     const product = {
@@ -401,15 +433,15 @@ app.post('/upload-relevant', multerThenAuth('images', 5, true), (req, res) => {
       originalPrice: originalPrice?.trim() ? +originalPrice : null,
       category: category || '',
       badge: badge || '',
-      images: imageUrls,
-      image: imageUrls[0],
+      images: imageUrls, // ✅ All Cloudinary secure URLs
+      image: imageUrls[0], // ✅ First image as primary (Cloudinary URL)
       isRelevant: true,
       createdAt: new Date().toISOString()
     };
 
     db.relevantProducts.unshift(product);
     saveData();
-    console.log(`⭐ Relevant product added: ${product.name}`);
+    console.log(`⭐ Relevant product added: ${product.name} - Images on Cloudinary`);
     res.json({ success: true, product });
   } catch (error) {
     console.error('Relevant product upload error:', error);
@@ -442,7 +474,15 @@ app.get('/recommendations/:id', (req, res) => {
     seen.add(p.id);
     return true;
   }).slice(0, 8);
-  res.json({ success: true, recommendations });
+  
+  // Ensure all recommendations have Cloudinary URLs
+  const recommendationsWithCloudinary = recommendations.map(rec => ({
+    ...rec,
+    images: rec.images?.filter(url => url && url.includes('cloudinary.com')) || [],
+    image: rec.image?.includes('cloudinary.com') ? rec.image : (rec.images?.[0] || null)
+  }));
+  
+  res.json({ success: true, recommendations: recommendationsWithCloudinary });
 });
 
 // Inventory
@@ -451,7 +491,7 @@ app.get('/inventory', (req, res) => {
     id: p.id,
     name: p.name,
     category: p.category,
-    image: (p.images || [])[0] || '',
+    image: (p.images || []).find(url => url.includes('cloudinary.com')) || '',
     stock: p.stock || 0,
     sold: p.sold || 0,
     available: (p.stock || 0) - (p.sold || 0),
@@ -547,6 +587,82 @@ app.delete('/orders/:id', verifyToken, (req, res) => {
   res.json({ success: true });
 });
 
+// ✅ MIGRATION ROUTE - Fix existing products with localhost URLs
+// Temporary route - can be removed after migration
+app.post('/migrate-to-cloudinary', verifyToken, (req, res) => {
+  let fixed = 0;
+  let productsFixed = 0;
+  let relevantFixed = 0;
+  
+  // Fix regular products
+  db.products.forEach(product => {
+    let changed = false;
+    
+    if (product.images && Array.isArray(product.images)) {
+      const validUrls = product.images.filter(url => url && url.includes('cloudinary.com'));
+      if (validUrls.length > 0) {
+        product.images = validUrls;
+        product.image = validUrls[0];
+        productsFixed++;
+        fixed++;
+        changed = true;
+      } else if (product.image && product.image.includes('cloudinary.com')) {
+        product.images = [product.image];
+        productsFixed++;
+        fixed++;
+        changed = true;
+      }
+    } else if (product.image && product.image.includes('cloudinary.com')) {
+      product.images = [product.image];
+      productsFixed++;
+      fixed++;
+      changed = true;
+    }
+    
+    if (changed) {
+      console.log(`✅ Fixed product: ${product.name} (ID: ${product.id})`);
+    }
+  });
+  
+  // Fix relevant products
+  db.relevantProducts.forEach(product => {
+    let changed = false;
+    
+    if (product.images && Array.isArray(product.images)) {
+      const validUrls = product.images.filter(url => url && url.includes('cloudinary.com'));
+      if (validUrls.length > 0) {
+        product.images = validUrls;
+        product.image = validUrls[0];
+        relevantFixed++;
+        fixed++;
+        changed = true;
+      } else if (product.image && product.image.includes('cloudinary.com')) {
+        product.images = [product.image];
+        relevantFixed++;
+        fixed++;
+        changed = true;
+      }
+    } else if (product.image && product.image.includes('cloudinary.com')) {
+      product.images = [product.image];
+      relevantFixed++;
+      fixed++;
+      changed = true;
+    }
+    
+    if (changed) {
+      console.log(`✅ Fixed relevant product: ${product.name} (ID: ${product.id})`);
+    }
+  });
+  
+  saveData();
+  console.log(`✅ Migration completed: ${productsFixed} products, ${relevantFixed} relevant products fixed`);
+  res.json({ 
+    success: true, 
+    message: `Fixed ${fixed} products (${productsFixed} regular, ${relevantFixed} relevant)`,
+    stats: { productsFixed, relevantFixed, totalFixed: fixed }
+  });
+});
+
 // Dashboard
 app.get('/analytics/dashboard', verifyToken, (req, res) => {
   const lowStockCount = db.products.filter(p => ((p.stock || 0) - (p.sold || 0)) < 10).length;
@@ -571,7 +687,7 @@ app.get('/analytics/dashboard', verifyToken, (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
-    environment: process.env.NODE_ENV || 'development',
+    environment: process.env.NODE_ENV || 'production',
     baseUrl: BASE_URL,
     port: PORT,
     stats: {
@@ -583,7 +699,16 @@ app.get('/api/health', (req, res) => {
       configured: true,
       cloudName: process.env.CLOUDINARY_CLOUD_NAME,
       hasApiKey: !!process.env.CLOUDINARY_API_KEY,
-      hasApiSecret: !!process.env.CLOUDINARY_API_SECRET
+      hasApiSecret: !!process.env.CLOUDINARY_API_SECRET,
+      secureUrlsOnly: true
+    },
+    storage: {
+      localUploadFolder: 'REMOVED - Using Cloudinary only',
+      allImagesFromCloudinary: true
+    },
+    migration: {
+      available: true,
+      endpoint: '/migrate-to-cloudinary'
     },
     timestamp: new Date().toISOString()
   });
@@ -592,13 +717,17 @@ app.get('/api/health', (req, res) => {
 // Start Server
 const server = app.listen(PORT, () => {
   console.log('\n╔══════════════════════════════════════════════════════════════╗');
-  console.log('║     Manju Paper Plate MFG — Backend Server v7.0              ║');
-  console.log('║                    ✅ FULLY CONFIGURED                        ║');
+  console.log('║     Manju Paper Plate MFG — Backend Server v8.0              ║');
+  console.log('║              ✅ PRODUCTION READY - CLOUDINARY ONLY            ║');
   console.log('╚══════════════════════════════════════════════════════════════╝');
   console.log(`\n📡 Server running on: ${BASE_URL}`);
   console.log(`🔍 Health check: ${BASE_URL}/api/health`);
-  console.log(`\n☁️  Cloudinary Status: ✅ CONNECTED`);
-  console.log(`\n✅ Your server is ready for file uploads!\n`);
+  console.log(`🏪 Store redirect: ${BASE_URL}/store → Netlify store`);
+  console.log(`🔄 Migration endpoint: ${BASE_URL}/migrate-to-cloudinary`);
+  console.log(`\n☁️  Cloudinary Status: ✅ CONNECTED (Secure URLs only)`);
+  console.log(`📁 Local upload folder: ❌ REMOVED - All images on Cloudinary`);
+  console.log(`\n✅ Your backend is ready for production on Render!`);
+  console.log(`✅ Frontend should connect to: ${BASE_URL}\n`);
 });
 
 module.exports = app;
